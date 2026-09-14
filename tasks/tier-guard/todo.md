@@ -32,6 +32,10 @@
     证据：[`dispatch nudge e2e`](../../docs/research/2026-09-13-dispatch-nudge-e2e.md)
   - [ ] 观察：受限实现任务会选低一档——对照测试 Codex 2/2；Task 12 评估 Codex 2/4、Claude 1/4。不违反取舍类门槛；
     2026-09-13 用户确认暂不处理，继续积累数据
+  - [ ] 观察：Codex 取舍类任务被主代理显式选到低档——Task 15 guard 复评 12 次中 1 次（会话 3 分到 `luna/medium`）；
+    显式参数是 pin，hook 不干预，要改善只能作用于 skill 文本或候选目录描述。2026-09-14 用户确认暂不处理。
+    重新评估条件（与上一条共用）：真实使用中再出现取舍类被降档，或实现类样本每宿主 ≥10 次；届时先出方案再改。
+    证据：[`dispatch nudge e2e`](../../docs/research/2026-09-13-dispatch-nudge-e2e.md)
   - [x] Claude audit 提醒在真实宿主送达但未被采纳（1 轮、提醒后 2 次派活）。2026-09-13 用户确认：不改 audit 语义，
     留到 Task 12 用每宿主 ≥10 次自然派活的数据再决定。2026-09-14 关闭：Task 12 由 guard 取代，audit 语义未改；
     默认 guard 下 Claude 显式传参 12/12（Task 15），安装版 `0.2.0` 两轮验收拦截后 8/8 显式传参。
