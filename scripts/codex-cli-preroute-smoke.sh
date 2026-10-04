@@ -19,15 +19,16 @@ git -C "${SMOKE_DIR}" init -q
 git -C "${SMOKE_DIR}" config user.email tier-guard@example.invalid
 git -C "${SMOKE_DIR}" config user.name tier-guard-probe
 
-PROMPT=$'Use the installed tier-routing skill. Create exactly three native child agents, one at a time, and wait for each. The parent may read the skill but must not modify the project. Do not tell me model choices before spawning.\n\nChild A is a mechanical read-only task; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_LUNA_OK.\n\nChild B is a bounded implementation task with explicit acceptance; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_TERRA_OK.\n\nChild C compares approaches involving risk, cost, and rollback tradeoffs; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_XHIGH_OK.\n\nFor each child, independently choose and explicitly pass the lowest-cost qualified model and reasoning effort according to tier-routing. After all three finish, report their replies only.'
+PROMPT=$'Use the installed tier-routing skill. Create exactly three native child agents, one at a time, and wait for each. The parent may read the skill but must not modify the project. Do not tell me model choices before spawning.\n\nChild A is a mechanical read-only task; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_LUNA_OK.\n\nChild B is a bounded implementation task with explicit acceptance; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_SOL_OK.\n\nChild C compares approaches involving risk, cost, and rollback tradeoffs; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_XHIGH_OK.\n\nFor each child, independently choose and explicitly pass the lowest-cost qualified model and reasoning effort according to tier-routing. After all three finish, report their replies only.'
 
 echo "隔离工作目录：${SMOKE_DIR}"
 echo "唯一审计目录：${SMOKE_LOG_DIR}"
-echo "父代理：gpt-5.6-terra / high；生产 catalog 保持 audit。"
+echo "父代理：gpt-6.1-sol / high（不等于任何子代理目标，继承与路由不会混淆）。"
+echo "本次用 TIER_GUARD_MODE=audit 强制覆盖；生产默认 profile 是 guard。"
 echo "在 TUI 显示三个 child 回复后，退出 Codex 回到此脚本以打印只读证据。"
 
 TIER_GUARD_LOG_DIR="${SMOKE_LOG_DIR}" TIER_GUARD_MODE=audit \
-  codex -C "${SMOKE_DIR}" -m gpt-5.6-terra -c 'model_reasoning_effort="high"' \
+  codex -C "${SMOKE_DIR}" -m gpt-6.1-sol -c 'model_reasoning_effort="high"' \
   --no-alt-screen -s read-only -a never "${PROMPT}"
 
 echo ""
@@ -46,13 +47,15 @@ import sys
 
 cwd = sys.argv[1]
 con = sqlite3.connect('/Users/vilin/.codex/state_5.sqlite')
+print('id\tmodel\treasoning_effort\tcli_version\ttitle')
 for row in con.execute(
-    'select id, model, reasoning_effort, title from threads where cwd = ? order by created_at',
+    'select id, model, reasoning_effort, cli_version, title from threads where cwd = ? order by created_at',
     (cwd,),
 ):
     print('\t'.join('' if value is None else str(value) for value in row))
 PY
 
 echo ""
-echo "通过条件：三个 child 回复、三条对应审计记录，且线程实际为 luna/medium、terra/high、terra/xhigh。"
+echo "通过条件：三个 child 回复、三条对应审计记录，且线程实际为 gpt-6-luna/high、gpt-6.1-sol/medium、gpt-6.1-sol/xhigh。"
+echo "父线程应保持 gpt-6.1-sol / high 不变；任何 child 出现 sol/high 即为继承而非路由。"
 echo "保留上述目录作证据；本脚本不会删除它。"
