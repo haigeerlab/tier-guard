@@ -132,6 +132,23 @@ core 把它记为 `unavailable` 并按无上下文处理，不会让路由失败
 未 pin 且没有可识别起点时，v2 仍按任务做 `select`，因为它的职责就是为这次新派活选择候选；这不是继承主代理模型的改写。
 显式 pin 即使不在候选目录中也绝不改写；audit 可记 `select` 及 `recommended`，但 `target=null`、`applied=false`。
 
+#### pin 的来源
+
+「显式选择」不限于本次派活的调用参数。Claude Code 侧必须把下面三类都算作 pin，按优先级取值：
+
+1. 本次派活的 `tool_input.model`；
+2. 该 `subagent_type` 的 agent 定义 frontmatter 中的 `model`；
+3. 宿主配置的子代理模型环境变量 —— `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`（强制，并使 `model`
+   参数被宿主忽略）与 `CLAUDE_CODE_SUBAGENT_MODEL`（默认）。两者均在 Claude Code 2.1.289 中
+   被实际读取。
+
+空值与 `inherit` / `default` 不算设置过，这与宿主自身的判定一致；把它们当作 pin 会让整类任务
+不再被路由。`fork` 恒继承父代理模型、插件 agent（名字带冒号）的 frontmatter 读不到，这两种情况
+仍是「判不出」，不提醒也不改写。
+
+漏掉第 3 类会在 `auto` 下覆盖用户用环境变量做出的显式选择，违反上面的 pin 不变量。
+背景与核实过程见 [同类方案调研](../docs/research/2026-10-routing-prior-art.md)。
+
 ### 主代理预路由提醒
 
 2026-09-13 实测：点名 tier-routing 时 Claude 与 Codex 主代理都能显式选对三档；不点名时两者都不加载 skill，

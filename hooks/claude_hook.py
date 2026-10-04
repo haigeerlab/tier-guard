@@ -145,7 +145,23 @@ def on_agent(payload, cfg, mode):
     return rec, out
 
 
-def _nudge_pin(ti, subagent_type, found, agent_model):
+# Claude Code 2.1.289 读这两个变量决定子代理模型：前者强制（并让 model 参数被忽略），
+# 后者是默认值。用户设了就是显式选择，和 tool_input.model 一样是 pin，绝不改写。
+# 宿主自身把空值、inherit、default 当作没设，这里与它保持一致，否则会把「没设」当成 pin。
+_ENV_MODEL_VARS = ("CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_SUBAGENT_MODEL")
+_ENV_MODEL_IGNORED = ("inherit", "default")
+
+
+def env_subagent_model():
+    """宿主配置的子代理模型；没设或被宿主忽略的取值 → None。"""
+    for var in _ENV_MODEL_VARS:
+        value = (os.environ.get(var) or "").strip()
+        if value and value.lower() not in _ENV_MODEL_IGNORED:
+            return value
+    return None
+
+
+def _nudge_pin(ti, subagent_type, found, agent_model, env_model=None):
     """主代理预路由提醒专用的 pin 判定，与上面路由用的 pinned 语义分开算：
     True=能确认已 pin，False=能确认未 pin，None=判不出（插件 agent），永不提醒。"""
     if ti.get("model"):
@@ -153,7 +169,10 @@ def _nudge_pin(ti, subagent_type, found, agent_model):
     if found and agent_model:
         return True
     if isinstance(subagent_type, str) and (subagent_type == "fork" or ":" in subagent_type):
+        # fork 恒继承父代理模型、插件 agent 的 frontmatter 读不到：env 也改变不了「判不出」
         return None
+    if env_model:
+        return True
     return False
 
 
@@ -172,12 +191,13 @@ def on_agent_v2(payload, cfg, mode, catalog_identity):
     prompt = ti.get("prompt") if isinstance(ti.get("prompt"), str) else ""
     subagent_type = ti.get("subagent_type")
     found, agent_model = resolve_agent_model(subagent_type, agent_dirs(payload))
-    pinned = bool(ti.get("model")) or bool(found and agent_model)
+    env_model = env_subagent_model()
+    pinned = bool(ti.get("model")) or bool(found and agent_model) or bool(env_model)
     request = {
         "task": prompt,
         "host": "claude-code",
         "requested": {
-            "model": ti.get("model") or agent_model,
+            "model": ti.get("model") or agent_model or env_model,
             "reasoning_effort": None,
             "pinned": pinned,
         },
@@ -189,7 +209,7 @@ def on_agent_v2(payload, cfg, mode, catalog_identity):
     host_pre_dispatch_apply = rd.host_auto_enabled(cfg, "claude-code")
 
     session_id = payload.get("session_id")
-    nudge_pin = _nudge_pin(ti, subagent_type, found, agent_model)
+    nudge_pin = _nudge_pin(ti, subagent_type, found, agent_model, env_model)
     host_nudge_gate = rd.host_nudge_enabled(cfg, "claude-code")
     already_denied = tier_state.nudge_already_denied(session_id)
     nudge_summary = rd.catalog_summary(cfg, "claude-code")

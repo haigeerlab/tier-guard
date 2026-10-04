@@ -5,6 +5,20 @@ All notable user-facing changes are documented here. Version numbers follow
 
 ## [Unreleased]
 
+### Fixed
+
+- Claude Code pin detection missed a model source the host actually honours.
+  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and `CLAUDE_CODE_SUBAGENT_MODEL` configure
+  the subagent model in Claude Code 2.1.289, but tier-guard read neither, so a
+  dispatch the user had already pinned through the environment counted as
+  unpinned. Under `auto` that would have rewritten the model and overridden an
+  explicit choice, breaking the rule that an explicit model is never rewritten.
+  Both variables are now pin sources, ranked below `tool_input.model` and the
+  agent definition's frontmatter. Empty, `inherit` and `default` are treated as
+  unset, matching the host's own check — counting them as pins would silently
+  stop routing an entire class of dispatches. No live behaviour changed: the
+  default profile is `guard`, which never rewrites.
+
 ### Changed
 
 - v2 candidate catalog: the Codex column moves to the gpt-6 generation —

@@ -291,6 +291,34 @@ runv2 auto "$(mk $'只读审查配置，禁止修改任何文件。\n验收：�
 check "v2 auto：agent frontmatter 的显式 model 也是 pin" "$(yn [ -z "${OUT}" ])"
 check "v2 auto：frontmatter pin 不改写" \
   "$(lastlog 'r["routing_version"] == 2 and r["agent_model"] == "sonnet" and r["decision"]["action"] == "pinned" and r["applied"] is False')"
+
+# ── 宿主承认的第三个 pin 来源：CLAUDE_CODE_SUBAGENT_MODEL / _FORCE ──
+# Claude Code 2.1.289 读这两个变量决定子代理模型（前者是默认，后者强制并让 model 参数被忽略）。
+# 用户设了就是显式选择，auto 下绝不能覆盖。宿主自己把 inherit / default / 空值当作没设。
+runv2env() {  # $1=profile $2=payload $3...=额外环境变量赋值
+  local profile="$1" payload="$2"; shift 2
+  OUT="$(printf '%s' "${payload}" | env HOME="${FAKEHOME}" CLAUDE_PROJECT_DIR="${PROJ}" \
+          TIER_GUARD_LOG_DIR="${LOGD}" TIER_GUARD_MODE="${profile}" \
+          TIER_GUARD_CONFIG="${V2_ROUTE_CONFIG}" "$@" /bin/bash "${HOOK}" agent)"
+  RC=$?
+}
+runv2env auto "${V2SIMPLE}" CLAUDE_CODE_SUBAGENT_MODEL=opus
+check "pin 来源：CLAUDE_CODE_SUBAGENT_MODEL 是 pin，不改写" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
+check "pin 来源：env pin 记 pinned、requested 取该值、applied=false" \
+  "$(lastlog 'r["decision"]["action"] == "pinned" and r["decision"]["requested"]["model"] == "opus" and r["decision"]["requested"]["pinned"] is True and r["applied"] is False')"
+runv2env auto "${V2SIMPLE}" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=sonnet
+check "pin 来源：CLAUDE_CODE_SUBAGENT_MODEL_FORCE 也是 pin，不改写" "$(yn [ -z "${OUT}" ])"
+check "pin 来源：FORCE 记 pinned" \
+  "$(lastlog 'r["decision"]["action"] == "pinned" and r["decision"]["requested"]["model"] == "sonnet"')"
+runv2env auto "${V2SIMPLE}" CLAUDE_CODE_SUBAGENT_MODEL=inherit
+check "pin 来源反：env=inherit 不算 pin（宿主自己也忽略）" \
+  "$(jsonq 'o["hookSpecificOutput"]["updatedInput"]["model"] == "haiku"')"
+runv2env auto "${V2SIMPLE}" CLAUDE_CODE_SUBAGENT_MODEL=
+check "pin 来源反：env 为空串不算 pin" \
+  "$(jsonq 'o["hookSpecificOutput"]["updatedInput"]["model"] == "haiku"')"
+runv2env auto "$(mk $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' opus nomodel)" CLAUDE_CODE_SUBAGENT_MODEL=sonnet
+check "pin 来源：tool_input.model 优先于 env" \
+  "$(lastlog 'r["decision"]["requested"]["model"] == "opus"')"
 runv2 auto '{"tool_name":"Agent","tool_input":{"subagent_type":"nomodel"}}'
 check "v2：缺 prompt → 退出 0、stdout 空且不应用" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
 check "v2：缺 prompt → fallback 可审计" \
