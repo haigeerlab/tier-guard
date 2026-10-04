@@ -3,6 +3,16 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The canonical repository moved to `haigeerlab/tier-guard`. The previous
+  `haigeer-labs/tier-guard` repository is no longer reachable, so marketplace
+  entries that point at the old owner must be removed and re-added against the
+  new one. Commit history, tags `v0.1.1`–`v0.2.1` and the plugin version are
+  unchanged by the move.
+
 ## [0.2.1] - 2026-09-14
 
 ### Fixed
