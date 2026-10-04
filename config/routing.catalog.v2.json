@@ -91,27 +91,27 @@
       "capabilities": ["tradeoff", "cross_cutting"]
     },
     {
-      "id": "codex-luna-medium",
+      "id": "codex-luna-high",
       "host": "codex-cli",
-      "model": "gpt-5.6-luna",
-      "reasoning_effort": "medium",
+      "model": "gpt-6-luna",
+      "reasoning_effort": "high",
       "cost_rank": 1,
       "auto_eligible": true,
       "capabilities": ["mechanical", "read_only"]
     },
     {
-      "id": "codex-terra-high",
+      "id": "codex-sol-medium",
       "host": "codex-cli",
-      "model": "gpt-5.6-terra",
-      "reasoning_effort": "high",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium",
       "cost_rank": 2,
       "auto_eligible": true,
       "capabilities": ["implementation", "bounded_change"]
     },
     {
-      "id": "codex-terra-xhigh",
+      "id": "codex-sol-xhigh",
       "host": "codex-cli",
-      "model": "gpt-5.6-terra",
+      "model": "gpt-6.1-sol",
       "reasoning_effort": "xhigh",
       "cost_rank": 3,
       "auto_eligible": true,

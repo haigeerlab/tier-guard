@@ -140,7 +140,7 @@ PY2
 }
 SK=skills/tier-routing/SKILL.md
 mkskill "${TMP}/sk-good"
-mkskill "${TMP}/sk-effort"; sub1 "${TMP}/sk-effort/${SK}" '`gpt-5.6-terra` / `high`' '`gpt-5.6-terra` / `medium`'
+mkskill "${TMP}/sk-effort"; sub1 "${TMP}/sk-effort/${SK}" '`gpt-6.1-sol` / `medium`' '`gpt-6.1-sol` / `high`'
 mkskill "${TMP}/sk-nomark"; sub1 "${TMP}/sk-nomark/${SK}" '<!-- candidate-table:begin -->' ''
 want pass "skill-sync: 候选能力表与 v2 catalog 一致 → 放行" python3 -B "${ROOT}/scripts/check-skill-sync.py" "${TMP}/sk-good"
 want fail "skill-sync: 候选表 Codex effort 漂移 → 报错" python3 -B "${ROOT}/scripts/check-skill-sync.py" "${TMP}/sk-effort"

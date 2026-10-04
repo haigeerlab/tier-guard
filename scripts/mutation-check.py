@@ -436,6 +436,19 @@ M = [
      '''    if mode == "auto":''', '''    if mode in ("auto", "guard"):''', "killed"),
     ("guard: 生产目录默认值被改回 audit（guard 应该是当前的默认 mode）", "config/routing.catalog.v2.json", RTC,
      '''"mode": "guard",''', '''"mode": "audit",''', "killed"),
+    ("catalog: Codex L1 被改回上一代 luna（2026-10 更新后生产表应钉在 gpt-6-luna）",
+     "config/routing.catalog.v2.json", RTC,
+     '''"model": "gpt-6-luna",''', '''"model": "gpt-5.6-luna",''', "killed"),
+    ("catalog: Claude 候选被塞进 reasoning_effort（Agent 工具 schema 没有这个通道）",
+     "config/routing.catalog.v2.json", RTC,
+     '''      "id": "claude-sonnet",
+      "host": "claude-code",
+      "model": "sonnet",
+      "reasoning_effort": null,''',
+     '''      "id": "claude-sonnet",
+      "host": "claude-code",
+      "model": "sonnet",
+      "reasoning_effort": "medium",''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")

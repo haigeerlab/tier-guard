@@ -22,9 +22,9 @@ tier-guard 只在创建子代理时工作，绝不切换主代理的 `model` 或
 <!-- candidate-table:begin -->
 | 所需能力 | Claude Code | Codex CLI |
 |---|---|---|
-| mechanical + read_only | `haiku` | `gpt-5.6-luna` / `medium` |
-| implementation + bounded_change | `sonnet` | `gpt-5.6-terra` / `high` |
-| tradeoff + cross_cutting | `opus` | `gpt-5.6-terra` / `xhigh` |
+| mechanical + read_only | `haiku` | `gpt-6-luna` / `high` |
+| implementation + bounded_change | `sonnet` | `gpt-6.1-sol` / `medium` |
+| tradeoff + cross_cutting | `opus` | `gpt-6.1-sol` / `xhigh` |
 <!-- candidate-table:end -->
 
 这是候选能力目录，不是固定模板：路由器结合本次任务信号选择最低成本的合格行。

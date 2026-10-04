@@ -102,7 +102,22 @@ def main():
     with open(os.path.join(root, "config", "routing.catalog.v2.json"), encoding="utf-8") as fh:
         disk_catalog = json.load(fh)
     assert rd.load_catalog(os.path.join(root, "config", "routing.catalog.v2.json"))["schema_version"] == 2
-    assert rd.catalog_candidates(disk_catalog, "codex-cli")[0]["id"] == "codex-luna-medium"
+    # 生产 Codex 候选（2026-10 价格/能力更新，见 docs/research/2026-10-model-catalog-update.md）：
+    # terra 更贵更弱已移出；L1 用 gpt-6-luna（半价、分数持平），L2/L3 同 slug 只动 effort。
+    assert [(c["id"], c["model"], c["reasoning_effort"])
+            for c in rd.catalog_candidates(disk_catalog, "codex-cli")] == [
+        ("codex-luna-high", "gpt-6-luna", "high"),
+        ("codex-sol-medium", "gpt-6.1-sol", "medium"),
+        ("codex-sol-xhigh", "gpt-6.1-sol", "xhigh"),
+    ], rd.catalog_candidates(disk_catalog, "codex-cli")
+    # Claude Code 的 Agent 工具没有 effort 通道（2.1.289 schema：model 是 sonnet/opus/haiku/fable
+    # 四值枚举，无 reasoning_effort 字段），所以 Claude 候选一律 effort=None，且只能写别名不能写完整 ID。
+    assert [(c["id"], c["model"], c["reasoning_effort"])
+            for c in rd.catalog_candidates(disk_catalog, "claude-code")] == [
+        ("claude-haiku", "haiku", None),
+        ("claude-sonnet", "sonnet", None),
+        ("claude-opus", "opus", None),
+    ], rd.catalog_candidates(disk_catalog, "claude-code")
     assert rd.host_auto_enabled(disk_catalog, "claude-code") is True
     assert rd.host_auto_enabled(disk_catalog, "codex-cli") is False
     # nudge: 生产目录只为 Task 15 达标的 Claude Code CLI 打开 dispatch_nudge（2026-09-13 用户确认）；Codex 保持关闭

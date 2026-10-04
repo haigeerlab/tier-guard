@@ -162,7 +162,7 @@ V2SIMPLE="$(sp $'只读审查配置，禁止修改任何文件。\n验收：报�
 runv2 audit "${V2SIMPLE}"
 check "v2 audit：未 pin 的简单任务只记 select，stdout 空" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
 check "v2 audit：记录 v2 决策且 applied=false" \
-  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "select" and r["decision"]["target"] == {"id": "codex-luna-medium", "model": "gpt-5.6-luna", "reasoning_effort": "medium"} and r["applied"] is False')"
+  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "select" and r["decision"]["target"] == {"id": "codex-luna-high", "model": "gpt-6-luna", "reasoning_effort": "high"} and r["applied"] is False')"
 check "v2 audit：记录实际读取目录的来源与内容指纹，不记录路径" \
   "$(lastlog 'r["catalog_identity"] == {"origin": "environment", "sha256": "'"${V2_CATALOG_SHA}"'"}')"
 check "v2 audit：派发前输入只记为 requested，不冒充实际执行" \
@@ -170,15 +170,15 @@ check "v2 audit：派发前输入只记为 requested，不冒充实际执行" \
 OPAQUE_TASK_TOKEN='gAAAAABqpV6vt1_VldXEBZKJFvQMBgplGnbDAsDfxP_Yk4J18GutDTltnSfReyHQokOmEoLYexQltP_gH8Dbbi8_fDfzmTT3f7YW0fSkHJDKu_ltyNhCSuj_uuO95A3l-T_uxvrekZ-TsnHEtBiGhf0Q66CtHM0kvnhOqAaXZCbfVIwuIUCA-9BdxAm9Us7zfcTWUO46R6Ka'
 runv2 audit "$(sp "${OPAQUE_TASK_TOKEN}" - -)"
 check "v2 audit：宿主不透明任务令牌明确标记，保守选高能力候选" \
-  "$(lastlog 'r["task_visibility"] == "opaque_token" and r["decision"]["confidence"] == "low" and r["decision"]["target"]["id"] == "codex-terra-xhigh"')"
+  "$(lastlog 'r["task_visibility"] == "opaque_token" and r["decision"]["confidence"] == "low" and r["decision"]["target"]["id"] == "codex-sol-xhigh"')"
 runv2verified auto "$(sp "${OPAQUE_TASK_TOKEN}" - -)"
 check "v2 auto：不透明任务令牌不自动改写，避免无语义依据的升档" \
   "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
 check "v2 auto：不透明任务令牌保留审计但 applied=false" \
   "$(lastlog 'r["task_visibility"] == "opaque_token" and r["host_pre_dispatch_apply"] is True and r["applied"] is False')"
-runv2 audit "$(sp $'完成后 git push 到 origin。\n验收：远端分支可见。' gpt-5.6-terra high)"
-check "v2 audit：显式 pin 仍报告 terra/high → terra/xhigh 的 raise，但不产出 target" \
-  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "raise" and r["decision"]["target"] is None and r["decision"]["recommended"]["id"] == "codex-terra-xhigh" and r["applied"] is False')"
+runv2 audit "$(sp $'完成后 git push 到 origin。\n验收：远端分支可见。' gpt-6.1-sol medium)"
+check "v2 audit：显式 pin 仍报告 sol/medium → sol/xhigh 的 raise，但不产出 target" \
+  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "raise" and r["decision"]["target"] is None and r["decision"]["recommended"]["id"] == "codex-sol-xhigh" and r["applied"] is False')"
 rm -rf "${LOGD}"
 runv2 audit "$(sp $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - - gpt-5.6-terra collaboration.spawn_agent)"
 check "v2 audit：MultiAgentV2 原始工具名归一后也记录 select" \
@@ -193,24 +193,24 @@ check "v2 auto：未验证 Codex 宿主不得改写参数，仍只审计" \
 check "v2 auto：未验证 Codex 宿主记录 applied=false" \
   "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "select" and r["applied"] is False and r["host_pre_dispatch_apply"] is False')"
 runv2verified auto "${V2SIMPLE}"
-check "v2 auto：已验证 Codex 宿主选择 luna/medium 并带 allow" \
-  "$(jsonq 'o["hookSpecificOutput"]["permissionDecision"] == "allow" and o["hookSpecificOutput"]["updatedInput"]["model"] == "gpt-5.6-luna" and o["hookSpecificOutput"]["updatedInput"]["reasoning_effort"] == "medium"')"
+check "v2 auto：已验证 Codex 宿主选择 luna/high 并带 allow" \
+  "$(jsonq 'o["hookSpecificOutput"]["permissionDecision"] == "allow" and o["hookSpecificOutput"]["updatedInput"]["model"] == "gpt-6-luna" and o["hookSpecificOutput"]["updatedInput"]["reasoning_effort"] == "high"')"
 check "v2 auto：已验证宿主只改 model / effort，保留完整 spawn 参数" \
   "$(jsonq 'o["hookSpecificOutput"]["updatedInput"]["message"].startswith("只读审查") and o["hookSpecificOutput"]["updatedInput"]["task_name"] == "t1" and o["hookSpecificOutput"]["updatedInput"]["agent_type"] == "worker" and o["hookSpecificOutput"]["updatedInput"]["fork_turns"] == "none"')"
 check "v2 auto：已验证宿主的 updatedInput 输出可审计" \
   "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "select" and r["host_pre_dispatch_apply"] is True and r["applied"] is True')"
-runv2 auto "$(sp $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' gpt-5.6-terra high)"
+runv2 auto "$(sp $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' gpt-6.1-sol medium)"
 check "v2 auto：显式 model / effort 是 pin，不改写" "$(yn [ -z "${OUT}" ])"
 check "v2 auto：pin 留下建议但 target 为空" \
-  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "pinned" and r["decision"]["target"] is None and r["decision"]["recommended"]["id"] == "codex-luna-medium" and r["applied"] is False')"
+  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "pinned" and r["decision"]["target"] is None and r["decision"]["recommended"]["id"] == "codex-luna-high" and r["applied"] is False')"
 runv2 auto "$(sp $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - high)"
 check "v2 auto：仅显式 effort 也视为 pin，不改写" "$(yn [ -z "${OUT}" ])"
 runv2verified auto "$(sp $'比较两种缓存架构并权衡后选一个实现。\n验收：给出取舍理由。' - -)"
-check "v2 auto：复杂取舍任务选择 terra/xhigh" \
-  "$(jsonq 'o["hookSpecificOutput"]["updatedInput"]["model"] == "gpt-5.6-terra" and o["hookSpecificOutput"]["updatedInput"]["reasoning_effort"] == "xhigh"')"
+check "v2 auto：复杂取舍任务选择 sol/xhigh" \
+  "$(jsonq 'o["hookSpecificOutput"]["updatedInput"]["model"] == "gpt-6.1-sol" and o["hookSpecificOutput"]["updatedInput"]["reasoning_effort"] == "xhigh"')"
 runv2verified auto "$(sp '处理这个问题。' - -)"
 check "v2 auto：未知任务保守选择高能力候选" \
-  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["confidence"] == "low" and r["decision"]["target"]["id"] == "codex-terra-xhigh" and r["applied"] is True')"
+  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["confidence"] == "low" and r["decision"]["target"]["id"] == "codex-sol-xhigh" and r["applied"] is True')"
 rm -rf "${LOGD}"
 runv2 auto "$(sp "${V2SIMPLE}" - - gpt-5.6-terra exec_command)"
 check "v2：不是 spawn_agent → stdout 空、不留日志" \
@@ -368,7 +368,7 @@ check "nudge：宿主已验证 pre_dispatch_apply 时，session E 第一次仍�
   "$(nudgeq 'o["hookSpecificOutput"]["permissionDecision"] == "deny" and "updatedInput" not in o["hookSpecificOutput"]')"
 runnudgemerged auto "$(spn E "${NUDGE_TASK}" - -)"
 check "nudge：session E 第二次未 pin → allow + updatedInput + additionalContext 同框（宿主已验证 apply）" \
-  "$(nudgeq 'o["hookSpecificOutput"]["permissionDecision"] == "allow" and o["hookSpecificOutput"]["updatedInput"]["model"] == "gpt-5.6-luna" and o["hookSpecificOutput"]["updatedInput"]["reasoning_effort"] == "medium" and remind_ok(o["hookSpecificOutput"]["additionalContext"])' "${V2_NUDGE_MERGED_CONFIG}")"
+  "$(nudgeq 'o["hookSpecificOutput"]["permissionDecision"] == "allow" and o["hookSpecificOutput"]["updatedInput"]["model"] == "gpt-6-luna" and o["hookSpecificOutput"]["updatedInput"]["reasoning_effort"] == "high" and remind_ok(o["hookSpecificOutput"]["additionalContext"])' "${V2_NUDGE_MERGED_CONFIG}")"
 check "nudge：session E 第二次记 nudge=reminded 且 applied=true" "$(lastnudgelog 'r["nudge"] == "reminded" and r["applied"] is True')"
 
 runnudge auto "$(spn B "${NUDGE_TASK}" - -)"

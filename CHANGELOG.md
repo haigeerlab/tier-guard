@@ -7,6 +7,19 @@ All notable user-facing changes are documented here. Version numbers follow
 
 ### Changed
 
+- v2 candidate catalog: the Codex column moves to the gpt-6 generation —
+  `gpt-6-luna` / `high` for mechanical read-only work, and `gpt-6.1-sol` at
+  `medium` / `xhigh` for the two higher tiers. `gpt-5.6-terra` leaves the
+  catalog: it costs more per output token than `gpt-6.1-sol` and scores lower,
+  so it was dominated on both axes. Candidate ids change accordingly
+  (`codex-luna-high`, `codex-sol-medium`, `codex-sol-xhigh`). The Claude column
+  is unchanged — its aliases already resolve to the intended models, and the
+  Agent tool exposes no reasoning-effort or tool-restriction parameter to route
+  on. The v1 compatibility table in `routing.default.json` is frozen on the
+  previous models on purpose. Rationale, availability measurements and the
+  limits of that evidence are in
+  `docs/research/2026-10-model-catalog-update.md`.
+
 - The canonical repository moved to `haigeerlab/tier-guard`. The previous
   `haigeer-labs/tier-guard` repository is no longer reachable, so marketplace
   entries that point at the old owner must be removed and re-added against the
