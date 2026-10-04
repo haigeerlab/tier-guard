@@ -218,8 +218,30 @@ tier-guard 只有 `PreToolUse` 与 `SubagentStop` 两个观察点，看不到测
 
 - `consecutive_failures` —— 同一任务连续失败次数，沿用 v1 已有入参语义。
 - `escalated` —— 既有的观测口径（子代理最后一条回复引用合同 ①–④ 并说交回 / 停止）。
-  当前**仅计数、不参与定档**；本约定允许把它作为失败信号之一，但必须是可配置的，
-  且默认保持「仅观测」，改变默认前需要真实数据支持。
+
+> **更正（2026-10-05 实测）**：本节初稿写的是 `escalated`「当前仅计数、不参与定档」。
+> 这句话描述的是 v1 路径。实情更弱一层，下面三条都在本机核实过：
+>
+> 1. **生产路径上它根本不被计算。** 默认目录是 `schema_version: 2`，走 `on_subagent_stop_v2`，
+>    而该 handler **不写 `escalated` 字段**；只有 v1 的 `on_subagent_stop` 写它。
+> 2. **真实日志里带 `escalated` 字段的记录为 0 条**（共 3034 条 `subagent-stop`）。
+> 3. **观测通道本身当前不可靠**：3034 条 stop 记录里 **2601 条（85.7%）是 fallback**，
+>    全部是同一个读不到子代理 transcript 的 `FileNotFoundError`。
+>
+> 另外该判据对否定句会误报：「我检查了③，不涉及不可逆动作，所以不需要停止」→ `True`
+> （纯子串合取，不理解否定）。
+
+把 `escalated` 接成失败信号的前置条件，因此比初稿写的苛刻得多，**按顺序**：
+
+1. 先修 `SubagentStop` 的 `FileNotFoundError`，把 fallback 率降到个位数——在它修好之前，
+   任何基于 stop 事件的统计都没有代表性，包括用来推翻现状的统计；
+2. 再把 `escalated` 补进 v2 的 stop 记录，**仍然只进日志、不进定档**；
+3. 积累到足够样本并人工标注，确认精度与召回；统计时必须**排除合同 ③**——「需要做不可逆的事
+   所以停下交回」是闸二设计出来就要的正确行为，把它计成失败等于对正确行为罚款；
+4. 最后才谈改默认，且改默认会正面触及本 spec 的 Non-goals「不解析子代理产出去推断成败」，
+   属于「Ask first」级别的语义变更。
+
+在此之前，**默认保持「仅观测」不是暂缓，是上述前置条件未满足的结果**。
 
 #### 规则
 
@@ -305,6 +327,20 @@ tier-guard 不改变其只读边界。
 | Codex Desktop | 已验证原生 `collaboration.spawn_agent` 进入 audit hook；尚未验证 `updatedInput` 被实际派发采纳，因此只能建议式，不可标为自动路由。 |
 | Codex Cloud | 独立验证；不从 CLI 或 Desktop 外推。 |
 
+#### 别名解析是宿主运行时行为，不是 tier-guard 的承诺
+
+Claude 候选写的是家族别名（`haiku` / `sonnet` / `opus`），因为 Agent 工具的 `model` 是四值枚举。
+**别名解析到哪个具体型号，tier-guard 既不控制也不断言**：它由宿主在运行时根据远端拉取的
+account-specific catalog（缓存在 `~/.claude/cache/model-catalog/`，TTL 约 59 分钟）、账号可用模型、
+per-provider 覆盖和用户自己的会话模型设置共同决定。
+
+2026-10-05 实测：同一次验收里 `haiku` → `claude-haiku-4-5-20251001`、`sonnet` → `claude-sonnet-5-5`、
+而 `opus` → `claude-opus-5`（该账号的 catalog 里 `claude-opus-5-5` 同样可用，但会话模型被
+`user_setting` 钉在 Opus 5）。
+
+因此：审计记录里的 `actual_execution` 是宿主回报的事实，**不能反推成 tier-guard 选错了档**；
+文档与候选目录都不得声称某个别名对应某个具体型号。
+
 ## Observability and calibration
 
 每条 v2 审计记录至少包括：路由版本、模型目录的来源类别与内容 SHA-256 指纹（不记录目录路径）、任务指纹、
@@ -364,3 +400,7 @@ adapter 已输出 `updatedInput`，不等于宿主接收或子代理实际执行
 - 升档：L1 失败按上游信号升到 L2；L2 连续失败两次产生带原因的 deny；升档后的档位不低于原档位
   也不低于 floor。
 - 日志中不出现上游 `reason` 正文、失败日志正文与任务原文。这条用断言覆盖，不靠人工检查。
+- 候选目录与文档都不声称某个 Claude 家族别名对应某个具体型号；`actual_execution` 与请求别名
+  不一致时不得被判为路由错误。
+- `SubagentStop` 的 fallback 率可从审计日志直接统计；在它降到个位数之前，任何基于 stop 事件的
+  统计结论都标注为不具代表性。

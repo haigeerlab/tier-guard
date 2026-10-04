@@ -157,7 +157,30 @@ E 是这次 pin 修复的真实宿主验证。修复前的行为是：tier-guard
 
 ### 结果
 
-> 待回填。
+**A/B/C/D 已完成**（2026-10-05 18:10–18:17，由主会话用 Agent 工具直接派发，
+插件为已安装的 `0.2.1`，工作树停在 `8ff0b78`）。**E 未执行** —— 它要求在进程启动时设置
+`CLAUDE_CODE_SUBAGENT_MODEL`，当前会话改不了自己的环境变量。
+
+| | requested | tier-guard 建议 | action | nudge | 实际执行 |
+|---|---|---|---|---|---|
+| A（首次未 pin） | — | haiku | select | **denied** | — |
+| A（重派） | haiku | haiku | keep | none | `claude-haiku-4-5-20251001` |
+| B | sonnet | sonnet | keep | none | `claude-sonnet-5-5` |
+| C | opus | opus | keep | none | `claude-opus-5` |
+| D | sonnet | **haiku** | lower | none | `claude-sonnet-5-5` |
+
+通过：三档建议与任务类型一一对应；拦截**整个会话只发生一次**；D 的 pin 被记录为方向性建议
+（`lower` → haiku）但 `target=null`、`applied=false`，未被改写。
+
+两处口径更正：
+
+- 协议初稿写 D 应为 `action == "pinned"`。**错了**：`pinned` 是 auto 的分支，guard 下 pin 请求
+  走方向性审计（`raise`/`lower`/`keep`）。仓里本就有一条变异体守着这个区别。`lower` 才是对的。
+- C 的实际执行是 `claude-opus-5` 而非 `claude-opus-5-5`。**这不是路由错误**，见
+  [模型目录更新](2026-10-model-catalog-update.md) 的「别名解析不是可断言的属性」一节。
+
+本轮顺带暴露的三件事（均已核实，已写进 spec）：v2 的 stop handler 不写 `escalated`；
+真实日志里带该字段的记录 0 条；3034 条 stop 里 2601 条（85.7%）是 `FileNotFoundError` fallback。
 
 ---
 

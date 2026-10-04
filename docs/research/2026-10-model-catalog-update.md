@@ -67,13 +67,8 @@
 目标表原本要求 Claude 列用完整 ID、L2 带 `effort medium`、L1 限制为只读工具。实测后三条都
 不成立或已满足：
 
-**别名已经指向目标模型**（Claude Code 2.1.289 安装文件中的映射）：
-
-```
-haiku  → claude-haiku-4-5
-sonnet → claude-sonnet-5-5
-opus   → claude-opus-5-5
-```
+> **更正（2026-10-05 实测后）**：本节初稿写过「别名已经指向目标模型」，并贴了一张从安装文件
+> grep 出来的映射表。**那是错的，而且错在性质上。** 详见下面的「别名解析不是可断言的属性」。
 
 **Agent 工具的输入 schema 只有 6 个字段**（从 2.1.289 安装文件提取）：
 
@@ -86,12 +81,44 @@ u({ description, prompt, subagent_type,
 由此：
 
 - **完整 ID 不能写进目录** —— `model` 是严格四值枚举，写 `claude-sonnet-5-5` 会让 hook 产出
-  schema 非法的 `updatedInput`。继续写别名才是正确做法，而别名已解析到目标模型。
+  schema 非法的 `updatedInput`。目录里只能写别名。
 - **没有 effort 通道** —— schema 里不存在 `reasoning_effort` / `effort` / `thinking` 字段。
   Claude 候选的 `reasoning_effort` 保持 `null`。该事实已写成 `test-route-contract.py` 中的
   可执行断言。
 - **没有工具限制通道** —— schema 里不存在 `tools` / `allowedTools` 字段。限制子代理工具集需要
   经 agent 定义文件实现，属于独立功能，不在本次路由表改动范围内。
+
+### 别名解析不是可断言的属性
+
+初稿的错误有两层。表层是读错了结构：grep 到的那行是 `latest_per_family`（每个家族的最新型号），
+不是别名解析表。深层的问题更要紧——**即便读对了，那个结论也不该下**。
+
+2026-10-05 的真实派活回执暴露了这点：
+
+| 别名 | 实际解析到 |
+|---|---|
+| `haiku` | `claude-haiku-4-5-20251001` |
+| `sonnet` | `claude-sonnet-5-5` |
+| `opus` | **`claude-opus-5`**，不是初稿断言的 `claude-opus-5-5` |
+
+查下来的事实（均在本机核实）：
+
+- 二进制里**有两套 baked catalog**，一套 `opus → claude-opus-5`、另一套 `opus → claude-opus-5-5`。
+  它们只是兜底。
+- 实际生效的是远端拉取的 catalog，缓存在 `~/.claude/cache/model-catalog/`（本机 28 份），
+  带 `fetchedAt` / `staleAt`，**TTL 59 分钟**，按账号区分。
+- 该 catalog 里 `claude-opus-5` 与 `claude-opus-5-5` **都可用**；
+  `state.model = claude-opus-5`、`selection_source = user_setting` —— 用户把会话模型钉在了 Opus 5。
+- 家族内还有 per-provider 覆盖（bedrock / vertex / foundry / gateway / mantle 各不相同）。
+
+「别名在家族内跟随用户已选模型」是与上述观测最自洽的解释，但**本机无法证明这条因果**，
+所以不写成结论。
+
+**能写成结论的是**：别名解析到哪个具体型号，由宿主在运行时根据远端 catalog、账号可用模型、
+provider 覆盖和用户自己的模型设置共同决定，每小时还会刷新。**这不是一个稳定属性，文档不应断言它。**
+
+tier-guard 按**家族别名**路由；具体型号不在它的控制范围内，也不该出现在它的候选目录或承诺里。
+这不改变「Claude 列不动」这个决定——Agent 工具的四值枚举本来就只接受别名——但它改变了理由。
 
 **顺带发现的风险**：Agent 工具 `model` 参数的描述文本中有一条条件分支——
 `CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL` 开启时提示
