@@ -193,8 +193,8 @@ M = [
     ("nudge claude: 并发抢输（标记已存在）也 deny（同一会话被拦多次）", TS, TTG,
      '''    except FileExistsError:\n        return "exists"''', '''    except FileExistsError:\n        return "created"''', "killed"),
     ("nudge claude: 插件 / fork agent 当成能确认未 pin（会被提醒或拦截）", CH, TTG,
-     '''    if isinstance(subagent_type, str) and (subagent_type == "fork" or ":" in subagent_type):\n        return None''',
-     '''    if isinstance(subagent_type, str) and (subagent_type == "fork" or ":" in subagent_type):\n        return False''', "killed"),
+     '''    if isinstance(subagent_type, str) and (subagent_type == "fork" or ":" in subagent_type):\n        # fork 恒继承父代理模型、插件 agent 的 frontmatter 读不到：env 也改变不了「判不出」\n        return None''',
+     '''    if isinstance(subagent_type, str) and (subagent_type == "fork" or ":" in subagent_type):\n        # fork 恒继承父代理模型、插件 agent 的 frontmatter 读不到：env 也改变不了「判不出」\n        return False''', "killed"),
     ("nudge claude: remind 顺带附上 permissionDecision（audit 下也像被拦截）", CH, TTG,
      '''            out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": reminder_text}}''',
      '''            out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": reminder_text, "permissionDecision": "allow"}}''', "killed"),
@@ -443,8 +443,14 @@ M = [
      '''    pinned = bool(ti.get("model")) or bool(found and agent_model) or bool(env_model)''',
      '''    pinned = bool(ti.get("model")) or bool(found and agent_model)''', "killed"),
     ("pin: env 的 inherit / default 也当成 pin（会把「没设」误判为已 pin，整类任务不再路由）", CH, TTG,
-     '''        if value and value.lower() not in _ENV_MODEL_IGNORED:''',
+     '''        if value and value.lower() not in _MODEL_NOT_A_CHOICE:''',
      '''        if value:''', "killed"),
+    ("pin: frontmatter 的 inherit / default 当成 pin（整类 agent 的派活静默不再被路由）", CH, TTG,
+     '''                model = (fm.get("model") or "").strip()
+                if model.lower() in _MODEL_NOT_A_CHOICE:
+                    model = ""
+                return True, model or None''',
+     '''                return True, fm.get("model") or None''', "killed"),
     ("pin: env 优先于 tool_input.model（本次派活的显式参数应最高优先）", CH, TTG,
      '''            "model": ti.get("model") or agent_model or env_model,''',
      '''            "model": env_model or ti.get("model") or agent_model,''', "killed"),

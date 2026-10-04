@@ -80,7 +80,10 @@ def resolve_agent_model(subagent_type, dirs):
             except (OSError, UnicodeDecodeError):
                 continue
             if fm is not None and fm.get("name", n[:-3]) == subagent_type:
-                return True, fm.get("model") or None
+                model = (fm.get("model") or "").strip()
+                if model.lower() in _MODEL_NOT_A_CHOICE:
+                    model = ""
+                return True, model or None
     return False, None
 
 
@@ -149,14 +152,16 @@ def on_agent(payload, cfg, mode):
 # 后者是默认值。用户设了就是显式选择，和 tool_input.model 一样是 pin，绝不改写。
 # 宿主自身把空值、inherit、default 当作没设，这里与它保持一致，否则会把「没设」当成 pin。
 _ENV_MODEL_VARS = ("CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_SUBAGENT_MODEL")
-_ENV_MODEL_IGNORED = ("inherit", "default")
+# 「跟随父代理」「用默认」都不是一次显式选择。env 与 agent frontmatter 两条路径共用这张表：
+# 把它们当成 pin 会让整类派活静默地不再被路由，比漏判 pin 更难发现。
+_MODEL_NOT_A_CHOICE = ("inherit", "default")
 
 
 def env_subagent_model():
     """宿主配置的子代理模型；没设或被宿主忽略的取值 → None。"""
     for var in _ENV_MODEL_VARS:
         value = (os.environ.get(var) or "").strip()
-        if value and value.lower() not in _ENV_MODEL_IGNORED:
+        if value and value.lower() not in _MODEL_NOT_A_CHOICE:
             return value
     return None
 

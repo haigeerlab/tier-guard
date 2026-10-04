@@ -32,6 +32,8 @@ agent "${FAKEHOME}" executor sonnet
 agent "${FAKEHOME}" shadowed sonnet
 agent "${PROJ}"     shadowed haiku
 agent "${FAKEHOME}" nomodel -
+agent "${FAKEHOME}" inheritor inherit
+agent "${FAKEHOME}" defaulter default
 
 # $1=mode $2=payload [$3=事件] → 设置 OUT / RC
 run() {
@@ -291,6 +293,16 @@ runv2 auto "$(mk $'只读审查配置，禁止修改任何文件。\n验收：�
 check "v2 auto：agent frontmatter 的显式 model 也是 pin" "$(yn [ -z "${OUT}" ])"
 check "v2 auto：frontmatter pin 不改写" \
   "$(lastlog 'r["routing_version"] == 2 and r["agent_model"] == "sonnet" and r["decision"]["action"] == "pinned" and r["applied"] is False')"
+# frontmatter 的 inherit / default 表示「跟随父代理 / 用默认」，不是一次显式选择；
+# 当成 pin 会让这类 agent 的派活整类不再被路由，而且是静默的。
+runv2 auto "$(mk $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - inheritor)"
+check "frontmatter 反：model=inherit 不算 pin，仍按任务选档" \
+  "$(jsonq 'o["hookSpecificOutput"]["updatedInput"]["model"] == "haiku"')"
+check "frontmatter 反：inherit 不记成 agent_model" \
+  "$(lastlog 'r["agent_model"] is None and r["decision"]["action"] == "select"')"
+runv2 auto "$(mk $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - defaulter)"
+check "frontmatter 反：model=default 同样不算 pin" \
+  "$(jsonq 'o["hookSpecificOutput"]["updatedInput"]["model"] == "haiku"')"
 
 # ── 宿主承认的第三个 pin 来源：CLAUDE_CODE_SUBAGENT_MODEL / _FORCE ──
 # Claude Code 2.1.289 读这两个变量决定子代理模型（前者是默认，后者强制并让 model 参数被忽略）。
