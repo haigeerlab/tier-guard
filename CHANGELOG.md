@@ -7,6 +7,31 @@ All notable user-facing changes are documented here. Version numbers follow
 
 ### Fixed
 
+- `SubagentStop` no longer discards the record when it cannot read the
+  subagent's transcript. The read happened before the record was built, so a
+  missing file threw away everything — including the `session_id` and the
+  transcript path the report needs to recover later — and left a three-field
+  error row. On this machine that path covered 2610 of 3044 stop records
+  (85.7%). The record is now built first and kept; a missing transcript is
+  marked `transcript_status: missing` and, crucially, no longer counted as a
+  guard fallback. Those two things are different: `fallback` means the guard
+  itself hit an exception path and is how its own faults are diagnosed, while
+  a host that writes no transcript for some kinds of subagent is a normal
+  condition. Conflating them buried real faults under 86% noise. `/tier-report`
+  now shows that share on its own, counting both the new field and the older
+  `FileNotFoundError` rows so the figure stays honest on existing logs.
+
+  This recovers no lost observations: for those dispatches the transcript was
+  never written at all, so the model that actually ran is unknowable. The
+  escalation design's precondition in the spec has been corrected accordingly
+  — the metric that matters is split into a guard-fault rate, which should be
+  near zero, and a no-transcript share, which is a host property that may not
+  be movable at all.
+
+  The v1 handler has the same defect and is deliberately left alone: it is the
+  frozen compatibility layer, off the production path, and changing its record
+  shape would change v1 report semantics for no production benefit.
+
 - Claude Code pin detection missed a model source the host actually honours.
   `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and `CLAUDE_CODE_SUBAGENT_MODEL` configure
   the subagent model in Claude Code 2.1.289, but tier-guard read neither, so a

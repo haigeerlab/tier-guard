@@ -321,10 +321,8 @@ M = [
      '''           "event": "subagent-stop", "session_id": payload.get("session_id"),\n'''
      '''           "tool_use_id": None, "agent_type": meta.get("agentType"),''', "killed"),
     ("observe: SubagentStop(v2) 不读 meta 的 toolUseId", CH, TTC,
-     '''           "event": "subagent-stop", "routing_version": 2, "session_id": payload.get("session_id"),\n'''
-     '''           "tool_use_id": meta.get("toolUseId"), "agent_type": meta.get("agentType"),''',
-     '''           "event": "subagent-stop", "routing_version": 2, "session_id": payload.get("session_id"),\n'''
-     '''           "tool_use_id": None, "agent_type": meta.get("agentType"),''', "killed"),
+     '''    rec["tool_use_id"] = meta.get("toolUseId")''',
+     '''    rec["tool_use_id"] = None''', "killed"),
     ("observe: SubagentStop 有输出（会挡住子代理结束）", CH, TTO,
      '''    return rec, None                               # 永不输出''',
      '''    return rec, {"decision": "block"}                               # 永不输出''', "killed"),
@@ -382,7 +380,8 @@ M = [
      '''{"model": model, "reasoning_effort": None} if model else None''',
      '''{"model": model, "reasoning_effort": "medium"} if model else None''', "killed"),
     ("shell: v2 SubagentStop 记子任务原文", CH, TTG,
-     '''hexdigest() if prompt else None}''', '''hexdigest() if prompt else None, "prompt": prompt}''', "killed"),
+     '''    rec["prompt_sha256"] = hashlib.sha256(prompt.encode("utf-8")).hexdigest() if prompt else None''',
+     '''    rec["prompt_sha256"] = prompt''', "killed"),
     ("shell: v2 SubagentStop 不留 transcript 路径（未落盘时报告补不回）", CH, TTC,
      '''           "agent_transcript_path": path,''', '', "killed"),
     ("report: v2 不回读 transcript（触发时未落盘的实际模型永远未观测）", TR, TTC,
@@ -454,6 +453,16 @@ M = [
     ("pin: env 的 inherit / default 也当成 pin（会把「没设」误判为已 pin，整类任务不再路由）", CH, TTG,
      '''        if value and value.lower() not in _MODEL_NOT_A_CHOICE:''',
      '''        if value:''', "killed"),
+    ("stop: 先读 transcript 再建记录（读失败会把整条记录连同 session_id 和路径一起吞掉）", CH, TTG,
+     '''    except FileNotFoundError:''',
+     '''    except SystemExit:''', "killed"),
+    ("stop: 宿主没写 transcript 也标成 ok（missing 与 ok 不可区分，报告据此失真）", CH, TTG,
+     '''        rec["transcript_status"] = "missing"''',
+     '''        rec["transcript_status"] = "ok"''', "killed"),
+    ("report: 未写 transcript 只认新字段（旧日志上会报 0%，而那里正躺着几千条同类事件）", TR, TTC,
+     '''                        if r.get("transcript_status") == "missing"
+                        or "FileNotFoundError" in (r.get("fallback") or ""))''',
+     '''                        if r.get("transcript_status") == "missing")''', "killed"),
     ("pin: frontmatter 的 inherit / default 当成 pin（整类 agent 的派活静默不再被路由）", CH, TTG,
      '''                model = (fm.get("model") or "").strip()
                 if model.lower() in _MODEL_NOT_A_CHOICE:

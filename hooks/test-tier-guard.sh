@@ -358,10 +358,20 @@ check "v2 SubagentStop：按 meta 的 toolUseId 记录 transcript 里的实际�
   "$(lastlog 'r["event"] == "subagent-stop" and r["routing_version"] == 2 and r["tool_use_id"] == "u" and r["actual_execution"] == {"model": "claude-haiku-4-5", "reasoning_effort": None}')"
 check "v2 SubagentStop：不记子任务原文、不伪造路由决策" \
   "$(lastlog '"SECRET_PROMPT_TEXT" not in json.dumps(r, ensure_ascii=False) and "decision" not in r and len(r["prompt_sha256"]) == 64')"
+# 宿主对某些子代理种类根本不写 transcript（实测：同一会话里 Agent 工具派的有、其它没有，
+# 且全盘搜不到）。那是正常的宿主状况，不是守卫出错：记录必须保留、且不得占用 fallback 这个
+# 诊断位——否则 fallback 会被这类事件淹没，真正的守卫异常就看不见了。
 runv2 audit "$(stopp "${TMP}/sub/missing.jsonl")" subagent-stop
 check "v2 SubagentStop：transcript 不存在 → 退出 0、stdout 空" "$(yn c_silent)"
-check "v2 SubagentStop：transcript 不存在 → fallback 可审计" \
-  "$(lastlog 'r["event"] == "subagent-stop" and "FileNotFoundError" in r["fallback"]')"
+check "v2 SubagentStop：transcript 不存在 → 记录保留，不记成 fallback" \
+  "$(lastlog 'r["event"] == "subagent-stop" and "fallback" not in r and r["transcript_status"] == "missing"')"
+check "v2 SubagentStop：transcript 不存在 → 仍保留 session_id 与路径，可归因" \
+  "$(lastlog 'r["session_id"] == "s" and r["agent_transcript_path"].endswith("missing.jsonl") and r["routing_version"] == 2')"
+check "v2 SubagentStop：transcript 不存在 → 实际执行记为未知，不伪造" \
+  "$(lastlog 'r["actual_execution"] is None and r["tool_use_id"] is None')"
+runv2 audit "$(stopp "${TMP}/sub/agent-a.jsonl")" subagent-stop
+check "v2 SubagentStop：读到 transcript 时标记为 ok（与 missing 可区分）" \
+  "$(lastlog 'r["transcript_status"] == "ok" and r["actual_execution"]["model"] == "claude-haiku-4-5"')"
 # env=off 会被薄壳快速路径拦下，这里走状态文件，才真正测到 python 这一侧
 OFFD="${TMP}/v2-off"; mkdir -p "${OFFD}"; printf 'off\n' > "${OFFD}/mode"
 printf '%s' "$(stopp "${TMP}/sub/agent-a.jsonl")" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" TIER_GUARD_LOG_DIR="${OFFD}" \

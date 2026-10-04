@@ -121,6 +121,18 @@ def _v2_audit(out, recs, recent):
     emitted = sum(bool(r.get("applied")) for r in routes)
     out.append(f"共 {len(routes)} 次：audit：{profiles['audit']} / guard：{profiles['guard']} / auto：{profiles['auto']} / off：{profiles['off']}；"
                f"hook 已输出改写 {emitted}；pin {pinned}；fallback {actions['pass'] + actions['unsupported']}。")
+    # 宿主对某些子代理种类不写 transcript。那不是守卫异常，但它直接决定「实际执行」这一列
+    # 有多少是真的未知 —— 不单列出来，读者会以为是 tier-guard 没观测到。
+    all_stops = [r for r in recs if r.get("event") == "subagent-stop"]
+    # 新记录带 transcript_status；更早的记录把同一件事记成了 FileNotFoundError 兜底，两种都要算，
+    # 否则在旧日志上这一行会报 0%，而日志里恰恰躺着成千上万条同类事件。
+    no_transcript = sum(1 for r in all_stops
+                        if r.get("transcript_status") == "missing"
+                        or "FileNotFoundError" in (r.get("fallback") or ""))
+    if all_stops:
+        share = no_transcript / len(all_stops) * 100
+        out.append(f"SubagentStop {len(all_stops)} 次，其中宿主未写 transcript {no_transcript} 次（{share:.1f}%）；"
+                   "这部分的实际执行无从观测，与守卫异常无关。")
     stops = _v2_stops(recs)
     out +=["", "| 时间 | 宿主 | 宿主可改写 | 请求 | 选择 / 建议 | hook 改写输出 | 实际执行 | 动作 |",
             "|---|---|---|---|---|---|---|---|"]

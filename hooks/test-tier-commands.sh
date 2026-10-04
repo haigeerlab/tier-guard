@@ -190,6 +190,29 @@ v2_join_seen() { has "${JOINREP}" "| claude-haiku-4-5 |"; }
 check "v2 report：按 tool_use_id 关联 SubagentStop，列出实际执行模型" "$(yn v2_join_seen)"
 v2_join_unseen() { has "${JOINREP}" "| 未观测 |" && has "${JOINREP}" "共 2 次"; }
 check "v2 report：未关联到的那条仍写未观测，stop 记录不计入路由次数" "$(yn v2_join_unseen)"
+# 宿主对某些子代理不写 transcript（实测占全部 stop 的 85.7%）。报告必须把它单列，否则读者会
+# 把「宿主没给」误读成「tier-guard 没观测到」。新记录带 transcript_status，更早的记录把同一件事
+# 记成 FileNotFoundError 兜底 —— 两种口径都要算进同一个分子。
+V2NOTR="${TMP}/v2-notranscript"; mkdir -p "${V2NOTR}"
+python3 - "${V2NOTR}/decisions.jsonl" <<'PY2'
+import json, sys
+rows = [{"ts": "2026-10-05T00:00:00+00:00", "event": "subagent-stop", "routing_version": 2,
+         "session_id": "s", "transcript_status": "missing", "actual_execution": None},
+        {"ts": "2026-10-05T00:00:01+00:00", "event": "subagent-stop",
+         "fallback": "claude_hook: FileNotFoundError: [Errno 2] No such file or directory: '/x/a.jsonl'"},
+        {"ts": "2026-10-05T00:00:02+00:00", "event": "subagent-stop", "routing_version": 2,
+         "session_id": "s", "transcript_status": "ok",
+         "actual_execution": {"model": "claude-haiku-4-5", "reasoning_effort": None}}]
+with open(sys.argv[1], "w", encoding="utf-8") as fh:
+    for r in rows:
+        fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+PY2
+hookv2 "${V2NOTR}" audit agent "$(agentv2 u-notr)" >/dev/null
+NOTRREP="$(env -u TIER_GUARD_MODE HOME="${FAKEHOME}" python3 "${ROOT}/hooks/tier_report.py" --data "${V2NOTR}")"
+v2_notr() { has "${NOTRREP}" "宿主未写 transcript 2 次"; }
+check "v2 report：宿主未写 transcript 单列，新旧两种口径都算" "$(yn v2_notr)"
+v2_notr_not_fault() { has "${NOTRREP}" "与守卫异常无关"; }
+check "v2 report：明说它与守卫异常无关，不占 fallback 的诊断位" "$(yn v2_notr_not_fault)"
 
 # 真实宿主实测：SubagentStop 触发时，子代理唯一的 assistant 行可能还没落盘。报告须回读 transcript 补齐。
 V2LATE="${TMP}/v2-late"

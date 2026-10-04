@@ -333,14 +333,24 @@ def on_subagent_stop_v2(payload):
     path = payload.get("agent_transcript_path")
     if not isinstance(path, str) or not path:
         raise ValueError("SubagentStop payload 缺 agent_transcript_path")
-    meta, prompt, model = subagent_facts(path)
+    # 先用 payload 里已知的事实把记录立起来，再去读 transcript。顺序反过来的话，读失败会把
+    # 整条记录连同 session_id 和路径一起吞掉 —— 实测该路径占全部 stop 的 85.7%。
     rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
            "event": "subagent-stop", "routing_version": 2, "session_id": payload.get("session_id"),
-           "tool_use_id": meta.get("toolUseId"), "agent_type": meta.get("agentType"),
-           "actual_execution": {"model": model, "reasoning_effort": None} if model else None,
+           "tool_use_id": None, "agent_type": None, "actual_execution": None,
            # 实测：触发时子代理唯一的 assistant 行可能还没落盘；留路径给报告回读，不留内容
-           "agent_transcript_path": path,
-           "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest() if prompt else None}
+           "agent_transcript_path": path, "prompt_sha256": None, "transcript_status": "ok"}
+    try:
+        meta, prompt, model = subagent_facts(path)
+    except FileNotFoundError:
+        # 宿主对某些子代理种类不写 transcript（实测：文件事后全盘也搜不到，不是落盘时序）。
+        # 这是正常的宿主状况，不是守卫异常 —— 不占用 fallback 这个诊断位，否则真正的异常会被淹没。
+        rec["transcript_status"] = "missing"
+        return rec, None
+    rec["tool_use_id"] = meta.get("toolUseId")
+    rec["agent_type"] = meta.get("agentType")
+    rec["actual_execution"] = {"model": model, "reasoning_effort": None} if model else None
+    rec["prompt_sha256"] = hashlib.sha256(prompt.encode("utf-8")).hexdigest() if prompt else None
     return rec, None
 
 
