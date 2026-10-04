@@ -313,8 +313,17 @@ M = [
     # ── Task 6：SubagentStop / 建议 vs 实际 / 打回率 / 误报率 / auto 门槛 / 占比 ──
     ("observe: 升级触发只看编号不看交回", RD, RDT,
      '''            and ("交回" in text or "停止" in text))''', '''            and True)''', "killed"),
-    ("observe: SubagentStop 不读 meta 的 toolUseId", CH, TTO,
+    # 两个 handler 的这一行逐字相同（v1 on_subagent_stop / v2 on_subagent_stop_v2），锚点必须
+    # 带上各自的上一行才唯一；两条路径由不同套件守（v1 看 actual_tier 关联，v2 看报告的实际执行表）。
+    ("observe: SubagentStop(v1) 不读 meta 的 toolUseId", CH, TTO,
+     '''           "event": "subagent-stop", "session_id": payload.get("session_id"),\n'''
      '''           "tool_use_id": meta.get("toolUseId"), "agent_type": meta.get("agentType"),''',
+     '''           "event": "subagent-stop", "session_id": payload.get("session_id"),\n'''
+     '''           "tool_use_id": None, "agent_type": meta.get("agentType"),''', "killed"),
+    ("observe: SubagentStop(v2) 不读 meta 的 toolUseId", CH, TTC,
+     '''           "event": "subagent-stop", "routing_version": 2, "session_id": payload.get("session_id"),\n'''
+     '''           "tool_use_id": meta.get("toolUseId"), "agent_type": meta.get("agentType"),''',
+     '''           "event": "subagent-stop", "routing_version": 2, "session_id": payload.get("session_id"),\n'''
      '''           "tool_use_id": None, "agent_type": meta.get("agentType"),''', "killed"),
     ("observe: SubagentStop 有输出（会挡住子代理结束）", CH, TTO,
      '''    return rec, None                               # 永不输出''',
