@@ -81,6 +81,16 @@
   - 顺带发现两件旧事：停止记录 `actual_execution` 偶发为空（疑似 transcript 未落盘）；首次 deny 文案写死「（auto）」
 - [x] Checkpoint · Phase 7 complete（spec 中上游档位 / floor / `tier_source` / 升档 / 不漏日志各有通过的断言；变异 241 / 0 / 0；Claude 宿主证据已有，Codex 限制已写明）
 
+## Phase 8 · 让子代理派活真正省钱（与 spec-guard 分工，2026-10-05 用户批准）
+
+> 详见 plan「Phase 8」。整体账实测：sonnet 父代理下派活比不派贵 2.1–3.0 倍，先测清楚何时划算。
+
+- [ ] Task 23 · Claude 派活成本对照：opus 父代理 × 主会话上下文 小/大 × 派/不派，各 2 次
+- [ ] Task 24 · Codex L2 对照：Luna（high / xhigh）vs Sol/medium，10 个 L2 任务
+- [ ] Task 25 · 若 Luna 过关：Codex L2 改为 Luna（发版前先问）
+- [ ] Task 26 · tier-routing 加「所选候选不比你便宜就自己做」
+- [ ] Task 27 · 与 spec-guard 联调：Claude / Codex × 派 / 不派，成本报告与日志交叉核对
+
 ## 待补宿主验收（不改变生产配置）
 
 - [x] Codex CLI 主代理明文预路由：在真实交互式 Terminal/TUI 中复现 Desktop 的三档 child 回执。

@@ -22,6 +22,7 @@ hook 编码的证据，但**不构成 v2 的完成项**。本计划完成前，�
 - 2026-09-13 用户确认：自然使用时主代理不会自发加载 tier-routing，因此由派活事件驱动主代理显式预路由——audit 注入提醒（改变“audit 下 stdout 为空”的旧契约）、auto 每个会话 deny 一次；hook 仍不做语义判断。
 - 提醒与 deny 受 `host_capabilities.<host>.dispatch_nudge` 实测闸门控制，默认全部 `false`；判定逻辑只放在 `hooks/route_decide.py`。
 - 2026-10-05 用户确认 Phase 7 的 D1–D3：失败次数随标记行 `failures=N` 传入；合法上游 tier 可低于「信息不足」保守档，但撤销不了不可逆 / 歧义 / 取舍 floor；L2 二次失败收回 deny 仅 guard / auto、pin 不拦、受 `dispatch_nudge` 闸门、不限每会话一次。
+- 2026-10-05 用户确认 Phase 8：先测派活成本（opus 父代理 × 上下文大小）；若 Codex L2 改用 Luna，可放开「升档只许动 effort，不许换 slug」；「不省钱就别派」先只做在 tier-routing skill 里。
 - 2026-09-13 Task 12 评估后用户确认：新增 `guard` profile 并设为默认（推翻「默认 audit」）。guard = 每会话第一次未 pin 派活 deny 一次、之后提醒，**从不改写参数**；audit 退回只记录 + 提醒；auto = guard + 参数改写。guard 不改参数，可由 `/tier-mode` 直接持久化，不需要 auto 的质量门槛。
 
 ## Dependency graph
@@ -575,6 +576,43 @@ read-only task, a forged `L1` on an irreversible task, an `L3` marker on a trivi
 **Out of scope for Phase 7:** writing `escalated` into v2 stop records (the spec's ordered precondition 1 — a
 host-no-transcript share low enough to be representative — is not met); any `/tier-report` view of the new fields
 (no acceptance criterion asks for it); making the reclaim deny depend on parsing subagent output (a Non-goal).
+
+### Phase 8: Make subagent dispatch actually save money (with spec-guard)
+
+> Requested by the spec-guard project session on 2026-10-05, approved by the user the same day. Division of labour:
+> spec-guard owns where and what to dispatch and the per-module cost report (it reads host session records, never tier-guard
+> logs); tier-guard owns choosing a cheaper-but-sufficient model and telling the main agent when dispatch would not save.
+
+**Decisions (user, 2026-10-05):** run the Claude cost experiment (budget about $8–15); the catalog constraint
+「升档只许动 effort，不许换 slug」 may be relaxed if Codex L2 moves to Luna; the "not cheaper → do it yourself" hint starts in
+the `tier-routing` skill only, no hook change.
+
+**Why first:** whole-flow accounting on the textkit acceptance runs (sonnet parent) showed dispatch cost 2.1–3.0× the inline
+run ($0.50–0.70 vs $0.233). A cheaper child model is necessary but not sufficient; the likely saving lever is main-session
+context size (each inline tool call re-reads it). That has to be measured before any rule depends on it.
+
+#### Task 23: Claude dispatch cost experiment
+Opus parent; main-session context small (~30K) vs large (~200K, pre-loaded); inline `/build auto` vs spec-guard `--dispatch`;
+2 runs each. Whole-flow cost = main + subagent transcripts, deduped per message.id. Output: the context size above which
+dispatch is cheaper, in `docs/research/`.
+**Acceptance:** 8 runs recorded with per-run cost split main/subagent; conclusion states the break-even or that none was found.
+
+#### Task 24: Codex L2 candidate experiment (Luna vs Sol/medium)
+The 10 Claude-side L2 tasks on Codex: `gpt-6.1-sol/medium` vs `gpt-6-luna` at `high` and `xhigh`; quality graded on pristine
+tests; tokens from rollout `token_count` (run `codex exec` directly, not the ephemeral wrapper).
+**Acceptance:** pass rate and per-task tokens/cost for each arm; explicit verdict whether Luna can take L2.
+
+#### Task 25: Codex L2 catalog change (only if Task 24 passes)
+Move Codex L2 to Luna; update catalog doc, CHANGELOG and contract tests; release. Ask before the release.
+
+#### Task 26: "Not cheaper → do it yourself" in tier-routing
+Skill text: when the chosen candidate is not cheaper than the main agent's own model (e.g. opus main + L3, or Codex main on
+`gpt-6.1-sol/medium` + an L2 that stays on sol), do the task in the main session instead of dispatching. Wording informed by
+Task 23. Skill-sync check passes.
+
+#### Task 27: Joint test with spec-guard
+Same 4–6 task module on Claude and Codex, dispatch vs no dispatch; spec-guard's cost report and tier-guard's logs must agree
+on tiers and models.
 
 ## Risks and mitigations
 
