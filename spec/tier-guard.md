@@ -367,9 +367,13 @@ Claude 候选写的是家族别名（`haiku` / `sonnet` / `opus`），因为 Age
 account-specific catalog（缓存在 `~/.claude/cache/model-catalog/`，TTL 约 59 分钟）、账号可用模型、
 per-provider 覆盖和用户自己的会话模型设置共同决定。
 
-2026-10-05 实测：同一次验收里 `haiku` → `claude-haiku-4-5-20251001`、`sonnet` → `claude-sonnet-5-5`、
-而 `opus` → `claude-opus-5`（该账号的 catalog 里 `claude-opus-5-5` 同样可用，但会话模型被
-`user_setting` 钉在 Opus 5）。
+2026-10-05 实测，同一会话、同样传 `model: opus`：会话模型为 Opus 5 时解析到 `claude-opus-5`（1/1），
+用 `/model` 换成 Opus 5.5 后解析到 `claude-opus-5-5`（11/11），立即生效；同期 `sonnet` 在切换前后
+都是 `claude-sonnet-5-5`（13/13），未受影响。**别名在家族内跟随会话模型，影响只限于该家族。**
+详见 [模型目录更新](../docs/research/2026-10-model-catalog-update.md)。
+
+这让「不断言具体型号」从一条谨慎的约定变成了必然：同一个别名，换一个用户或换一个设置就解析到
+不同型号，tier-guard 无论写什么都会对一部分人是错的。
 
 因此：审计记录里的 `actual_execution` 是宿主回报的事实，**不能反推成 tier-guard 选错了档**；
 文档与候选目录都不得声称某个别名对应某个具体型号。
