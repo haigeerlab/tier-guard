@@ -39,6 +39,7 @@
 /bin/bash hooks/test-tier-observe.sh     # SubagentStop · 打回率 · 误报率 · auto 门槛
 /bin/bash scripts/test-checkers.sh       # 校验器自身回归
 python3 -B hooks/route_decide.py --selftest
+python3 -B scripts/check-mutation-anchors.py  # 变异体锚点是否仍唯一命中（秒级，已进 validate）
 python3 scripts/mutation-check.py        # 变异测试（在临时副本里做，慢，不进 validate）
 /bin/bash scripts/install-git-hooks.sh   # 装 pre-push（未装，要装先问）
 ```
@@ -59,6 +60,10 @@ python3 scripts/mutation-check.py        # 变异测试（在临时副本里做�
 - **新加的每个 `check-*.py` 必须同时往 `scripts/test-checkers.sh` 加一正一反**；判据写完当场用真实数据跑一遍
 - 新写的断言要进 `scripts/mutation-check.py` 验一遍：「全绿」不等于「有断言」。
   标 `equivalent` 必须写清为什么
+- **改完 hook 源码跑一次 `check-mutation-anchors.py`。** 重构会打断锚定在那段代码上的变异体，
+  被打断的变异体**整条不跑**——不报错、不算失败，它守的断言从此无人验证。
+  `mutation-check.py` 会报「锚点失效 N」，但**只看这个计数会误判归因**：2026-10-05 把自己刚
+  造成的两处认成了已知旧账，一条变异体因此几个提交没跑。逐条核对才作数，这个检查几秒就出结果
 - 测试里复合条件写成具名函数再交给 `yn`：`$(yn A && B)` 是永远为真的空断言
 - 守卫任何异常路径一律放行（退出 0、stdout 空），并在日志里写明是哪条路径
 - 日志不记 prompt 原文（可能有密钥），只记长度和 sha256

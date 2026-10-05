@@ -34,6 +34,7 @@ TTC = ("/bin/bash", "hooks/test-tier-commands.sh")
 TS, TR, TL = "hooks/tier_state.py", "hooks/tier_report.py", "hooks/tier_label.py"
 TTO = ("/bin/bash", "hooks/test-tier-observe.sh")
 SS, PP = "scripts/check-skill-sync.py", "scripts/check-plugin-paths.py"
+MA = "scripts/check-mutation-anchors.py"
 TGC = ("/bin/bash", "hooks/test-tier-guard-codex.sh")
 CX, TGX = "hooks/codex_hook.py", "hooks/tier-guard-codex.sh"
 RTC = ("python3", "-B", "hooks/test-route-contract.py")
@@ -240,6 +241,15 @@ M = [
     ("skill-sync: 候选表标记丢了当成没东西可比", SS, TC,
      '''    if table is None:\n        print(f"  ❌ {SKILL} 缺 <!-- candidate-table:begin/end --> 标记")\n        return 1''',
      '''    if False:\n        print(f"  ❌ {SKILL} 缺 <!-- candidate-table:begin/end --> 标记")\n        return 1''', "killed"),
+    ("mutation-anchors: 只认「一次都不命中」，重复命中放行（重复的变异体同样整条不跑）", MA, TC,
+     '''        if hits != 1:''', '''        if hits < 1:''', "killed"),
+    ("mutation-anchors: 零个变异体当成通过（空列表等于没这个检查）", MA, TC,
+     '''    if not mutants:
+        print(f"  ❌ {TARGET} 的变异体列表为空 —— 不算通过")
+        return 1''',
+     '''    if False:
+        print(f"  ❌ {TARGET} 的变异体列表为空 —— 不算通过")
+        return 1''', "killed"),
     ("plugin-paths: 路径不存在也放行", PP, TC,
      '''            if not os.path.exists(os.path.join(root, m.group(1))):''', '''            if False:''', "killed"),
     ("plugin-paths: 零个文件当通过", PP, TC,

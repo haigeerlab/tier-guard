@@ -18,7 +18,7 @@ for p in .claude-plugin/plugin.json .codex-plugin/plugin.json \
          scripts/test-checkers.sh scripts/mutation-check.py scripts/install-git-hooks.sh \
          config/routing.default.json config/routing.catalog.v2.json hooks/route_decide.py hooks/test-route-contract.py \
          hooks/hooks.json hooks/tier-guard.sh hooks/claude_hook.py hooks/test-tier-guard.sh \
-         skills/tier-routing/SKILL.md scripts/check-skill-sync.py scripts/check-plugin-paths.py \
+         skills/tier-routing/SKILL.md scripts/check-skill-sync.py scripts/check-plugin-paths.py scripts/check-mutation-anchors.py \
          hooks/tier_state.py hooks/tier_report.py hooks/tier_doctor.py hooks/test-tier-commands.sh hooks/test-tier-doctor.sh \
          commands/tier-mode.md commands/tier-report.md commands/tier-doctor.md commands/tier-label.md \
          hooks/tier_label.py hooks/test-tier-observe.sh \
@@ -63,6 +63,10 @@ python3 -B scripts/check-skill-sync.py || F=1
 echo ""
 echo "═══ 命令 / skill / hooks.json 引用的脚本都存在 ═══"
 python3 scripts/check-plugin-paths.py || F=1
+
+echo ""
+echo "═══ 变异体锚点是否仍唯一命中 ═══"
+python3 -B scripts/check-mutation-anchors.py || F=1
 
 echo ""
 # 判据被三方共用（两个薄壳 + /tier-report）—— 它自己判错，表现是一条关不掉的

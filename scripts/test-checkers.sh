@@ -146,6 +146,45 @@ want pass "skill-sync: 候选能力表与 v2 catalog 一致 → 放行" python3 
 want fail "skill-sync: 候选表 Codex effort 漂移 → 报错" python3 -B "${ROOT}/scripts/check-skill-sync.py" "${TMP}/sk-effort"
 want fail "skill-sync: 候选表标记丢了 → 报错（不能当成没东西可比）" python3 -B "${ROOT}/scripts/check-skill-sync.py" "${TMP}/sk-nomark"
 
+# ── check-mutation-anchors.py ──
+# 夹具 = 一个最小的假仓库：一个被变异的目标文件 + 一份只含几条变异体的 mutation-check.py。
+# 不复制真仓库那份（157 条，改一处就要重算），只造刚好够判定的结构。
+mkanchor() {  # $1=目录 $2=目标文件内容 $3=M 列表内容
+  mkdir -p "$1/scripts" "$1/hooks"
+  printf '%s' "$2" > "$1/hooks/sample.py"
+  { printf 'TS = "hooks/sample.py"\nSUITE = ("/bin/true",)\n'; printf 'M = [\n%s]\n' "$3"; } \
+    > "$1/scripts/mutation-check.py"
+}
+ANCHOR_OK='def one():
+    return 1
+
+
+def two():
+    return 2
+'
+ANCHOR_DUP='def one():
+    return 1
+
+
+def two():
+    return 1
+'
+MLIST='    ("样本: 把 1 改成 0", TS, SUITE, """    return 1""", """    return 0""", "killed"),
+'
+mkanchor "${TMP}/anc-good"  "${ANCHOR_OK}"  "${MLIST}"
+mkanchor "${TMP}/anc-dup"   "${ANCHOR_DUP}" "${MLIST}"
+mkanchor "${TMP}/anc-empty" "${ANCHOR_OK}"  ""
+mkanchor "${TMP}/anc-gone"  "${ANCHOR_OK}"  '    ("样本: 锚点早就不在了", TS, SUITE, """def three():""", """def four():""", "killed"),
+'
+want pass "mutation-anchors: 锚点唯一命中 → 放行" \
+  python3 -B "${ROOT}/scripts/check-mutation-anchors.py" "${TMP}/anc-good"
+want fail "mutation-anchors: 锚点重复 → 报错（该变异体会被整条跳过，不跑也不报失败）" \
+  python3 -B "${ROOT}/scripts/check-mutation-anchors.py" "${TMP}/anc-dup"
+want fail "mutation-anchors: 锚点一次都不命中 → 报错" \
+  python3 -B "${ROOT}/scripts/check-mutation-anchors.py" "${TMP}/anc-gone"
+want fail "mutation-anchors: 零个变异体 → 不算通过（空列表等于没这个检查）" \
+  python3 -B "${ROOT}/scripts/check-mutation-anchors.py" "${TMP}/anc-empty"
+
 # ── check-plugin-paths.py ──
 mkpp() {  # $1=目录 $2=命令里引用的相对路径
   mkdir -p "$1/commands" "$1/hooks"; : > "$1/hooks/real.py"
