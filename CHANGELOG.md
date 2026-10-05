@@ -3,7 +3,17 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.2] - 2026-10-05
+
+### Added
+
+- `SubagentStop` records the token usage the host already reports in the
+  subagent transcript (input, cache write, cache read, output), summed over
+  every assistant message. When the transcript carries no usage at all the
+  field is omitted rather than written as zeros, so "no data" and "used
+  nothing" stay distinguishable. `/tier-report` adds a table of average tokens
+  by the model that actually ran. It deliberately converts nothing to dollars:
+  prices change and differ by account, and the counts are the durable fact.
 
 ### Fixed
 
@@ -41,7 +51,9 @@ All notable user-facing changes are documented here. Version numbers follow
   Both variables are now pin sources, ranked below `tool_input.model` and the
   agent definition's frontmatter. Empty, `inherit` and `default` are treated as
   unset, matching the host's own check — counting them as pins would silently
-  stop routing an entire class of dispatches. No live behaviour changed: the
+  stop routing an entire class of dispatches. The same rule now applies to an
+  agent definition's frontmatter: `model: inherit` or `model: default` is not
+  an explicit choice and no longer counts as a pin. No live behaviour changed: the
   default profile is `guard`, which never rewrites.
 
 ### Changed
@@ -52,9 +64,11 @@ All notable user-facing changes are documented here. Version numbers follow
   catalog: it costs more per output token than `gpt-6.1-sol` and scores lower,
   so it was dominated on both axes. Candidate ids change accordingly
   (`codex-luna-high`, `codex-sol-medium`, `codex-sol-xhigh`). The Claude column
-  is unchanged — its aliases already resolve to the intended models, and the
-  Agent tool exposes no reasoning-effort or tool-restriction parameter to route
-  on. The v1 compatibility table in `routing.default.json` is frozen on the
+  is unchanged: the Agent tool's `model` parameter only accepts the family
+  aliases, and it exposes no reasoning-effort or tool-restriction parameter to
+  route on. Which concrete model an alias resolves to is decided by the host at
+  runtime — measured here to follow the session model within its family — so
+  tier-guard routes by family and makes no promise about the exact model. The v1 compatibility table in `routing.default.json` is frozen on the
   previous models on purpose. Rationale, availability measurements and the
   limits of that evidence are in
   `docs/research/2026-10-model-catalog-update.md`.
