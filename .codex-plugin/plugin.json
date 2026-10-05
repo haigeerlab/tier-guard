@@ -1,6 +1,6 @@
 {
   "name": "tier-guard",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "\u4e3a\u672a pin \u5b50\u4ee3\u7406\u6309\u4efb\u52a1\u9700\u6c42\u9009\u62e9\u6700\u4f4e\u6210\u672c\u5408\u683c\u6a21\u578b\uff1b\u4e3b\u4ee3\u7406\u4e0d\u6362\u6a21\u578b\uff0c\u9ed8\u8ba4 guard\u3002",
   "hooks": "./hooks/codex-hooks.json"
 }

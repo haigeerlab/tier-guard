@@ -3,7 +3,7 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.5] - 2026-10-05
 
 ### Added
 
