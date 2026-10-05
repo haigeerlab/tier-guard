@@ -794,6 +794,10 @@ def _requirements''', "killed"),
     ("tier20: Codex audit 收回提醒不输出", CX, TGC,
      '''if nudge_status == "reminded" or reclaim_output == "remind":''',
      '''if nudge_status == "reminded":''', "killed"),
+    # ── 首次 deny 文案不写模式名（曾写死「（auto）」，guard 下显示错误）──
+    ("nudge: deny 文案写回模式名「（auto）」", RD, RDT,
+     '''NUDGE_DENY_TEXT = "tier-guard：本会话''',
+     '''NUDGE_DENY_TEXT = "tier-guard（auto）：本会话''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")

@@ -410,7 +410,8 @@ def route(request, cfg):
 
 
 NUDGE_REMIND_TEXT = "tier-guard：创建未 pin 的子代理前，请先按 tier-routing skill 判断本次子任务所需能力，并在派活参数中显式传入候选目录里最低成本合格的 model（Codex 另传 reasoning_effort）。显式参数视为 pin，不会被改写。"
-NUDGE_DENY_TEXT = "tier-guard（auto）：本会话第一次未 pin 的派活已被拦下。请先加载 tier-routing skill，按本次子任务选择候选目录中最低成本合格的 model（Codex 另传 reasoning_effort），带上显式参数后重新派活；本会话之后不会再拦截。"
+# guard 与 auto 共用这段文案，所以不写模式名（曾写死「（auto）」，guard 下被拦时显示错误的模式）。
+NUDGE_DENY_TEXT = "tier-guard：本会话第一次未 pin 的派活已被拦下。请先加载 tier-routing skill，按本次子任务选择候选目录中最低成本合格的 model（Codex 另传 reasoning_effort），带上显式参数后重新派活；本会话之后不会再拦截。"
 RECLAIM_DENY_TEXT = "tier-guard：这是 L2 任务第二次失败后的收回（上游报告连续失败 {n} 次）。本次派活已被拦下，不会自动重试：请主代理自己处理这项任务，或把它重新界定成一个新任务后再派活。"
 RECLAIM_REMIND_TEXT = "tier-guard：L2 任务已连续失败 {n} 次（第二次失败后的收回）。本次派活照常放行；建议主代理自己处理这项任务，或把它重新界定成一个新任务后再派活。"
 
@@ -889,7 +890,8 @@ def selftest():
              for x in sweep))
 
     # 主代理预路由提醒 nudge_decision
-    case("nudge：文本常量固定不变", NUDGE_REMIND_TEXT.startswith("tier-guard：") and NUDGE_DENY_TEXT.startswith("tier-guard（auto）："))
+    case("nudge：文本常量固定不变", NUDGE_REMIND_TEXT.startswith("tier-guard：") and NUDGE_DENY_TEXT.startswith("tier-guard："))
+    case("nudge：deny 文案不写模式名（guard 与 auto 共用）", not any(m in NUDGE_DENY_TEXT.replace("tier-guard", "") for m in ("auto", "guard", "audit")))
     case("nudge：profile=off → none",
          nudge_decision("off", False, True, "s1", False) == {"action": "none", "text": None})
     case("nudge：host_gate=False → none",
