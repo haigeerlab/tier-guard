@@ -312,6 +312,9 @@ def subagent_facts(transcript_path):
 
     实际模型取第一条带 model 的 assistant 消息 —— 同一子代理内不变。
     用量必须跨全部 assistant 消息累加，所以这里读完整个文件，不能读到模型就停。
+    同一条 assistant 消息（同一 message.id）宿主会写成多行（每个 content block 一行，流式过程中还会再写），
+    必须按 id 去重：同 id 取用量合计最大的那一行（流式行只增不减，最大的是完整的）；没有 id 的行各算各的，
+    绝不合并。实测 109 份 transcript 不去重会把 input 多算 1.97×、缓存写 1.96×、缓存读 1.83×。
     实测代价（2026-10-05，本机最大的 8 份 transcript，2.5MB / 1200 行级别）：读完 6.5–15.6ms，
     只读到首条 1.1–1.9ms；薄壳整体预算是中位 100ms、实测 32–50ms，这点开销吃得下。
     """
@@ -322,7 +325,8 @@ def subagent_facts(transcript_path):
             with open(mp, encoding="utf-8") as fh:
                 meta = json.load(fh)
     prompt = model = None
-    usage = dict.fromkeys(USAGE_FIELDS, 0)
+    by_id = {}        # message.id → 该 id 下合计最大的那一行用量
+    anonymous = []    # 没有 id 的行：逐行计入
     seen_usage = False
     with open(transcript_path, encoding="utf-8") as fh:
         for line in fh:
@@ -337,10 +341,19 @@ def subagent_facts(transcript_path):
             u = msg.get("usage")
             if isinstance(u, dict):
                 seen_usage = True
-                for field in USAGE_FIELDS:
-                    value = u.get(field)
-                    if isinstance(value, int) and not isinstance(value, bool):
-                        usage[field] += value
+                line_usage = {field: (u[field] if isinstance(u.get(field), int) and not isinstance(u.get(field), bool) else 0)
+                              for field in USAGE_FIELDS}
+                mid = msg.get("id")
+                if isinstance(mid, str) and mid:
+                    prev = by_id.get(mid)
+                    if prev is None or sum(line_usage.values()) > sum(prev.values()):
+                        by_id[mid] = line_usage
+                else:
+                    anonymous.append(line_usage)
+    usage = dict.fromkeys(USAGE_FIELDS, 0)
+    for line_usage in list(by_id.values()) + anonymous:
+        for field in USAGE_FIELDS:
+            usage[field] += line_usage[field]
     # 宿主一条用量都没给时记未知，而不是一串 0 —— 0 会被读成「真的没花 token」。
     return meta, prompt, model, (usage if seen_usage else None)
 
@@ -388,6 +401,9 @@ def on_subagent_stop_v2(payload):
     rec["actual_execution"] = {"model": model, "reasoning_effort": None} if model else None
     rec["prompt_sha256"] = hashlib.sha256(prompt.encode("utf-8")).hexdigest() if prompt else None
     rec["usage"] = usage
+    if usage is not None:
+        # 标记这条记录是按 message.id 去重后写的；更早的记录没有这个字段，其用量被重复计算过。
+        rec["usage_basis"] = "message-id-dedup"
     return rec, None
 
 

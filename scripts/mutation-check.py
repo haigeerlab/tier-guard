@@ -798,6 +798,24 @@ def _requirements''', "killed"),
     ("nudge: deny 文案写回模式名「（auto）」", RD, RDT,
      '''NUDGE_DENY_TEXT = "tier-guard：本会话''',
      '''NUDGE_DENY_TEXT = "tier-guard（auto）：本会话''', "killed"),
+    # ── 用量按 message.id 去重（SubagentStop 记录） ──
+    ("usage-dedup: 退回逐行累加（不按 message.id 去重）", CH, TTG,
+     '''if isinstance(mid, str) and mid:''',
+     '''if False:''', "killed"),
+    ("usage-dedup: 同 id 取最小而不是最大", CH, TTG,
+     '''sum(line_usage.values()) > sum(prev.values())''',
+     '''sum(line_usage.values()) < sum(prev.values())''', "killed"),
+    ("usage-dedup: 没有 id 的行被合并成一条", CH, TTG,
+     '''if isinstance(mid, str) and mid:''',
+     '''if True:''', "killed"),
+    ("usage-dedup: usage_basis 恒写（用量未知也写）", CH, TTG,
+     '''    if usage is not None:
+        # 标记这条记录''',
+     '''    if True:
+        # 标记这条记录''', "killed"),
+    ("usage-dedup: usage_basis 从不写", CH, TTG,
+     '''rec["usage_basis"] = "message-id-dedup"''',
+     '''pass''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")

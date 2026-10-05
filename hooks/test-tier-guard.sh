@@ -402,6 +402,50 @@ PY2
 runv2 audit "$(stopp "${TMP}/sub/nousage.jsonl")" subagent-stop
 check "v2 SubagentStop：transcript 有但宿主没给用量 → usage 记未知，不是一串 0" \
   "$(lastlog 'r["transcript_status"] == "ok" and r["actual_execution"]["model"] == "claude-haiku-4-5" and r["usage"] is None')"
+# 宿主把同一条 assistant 消息（同一 message.id）写成多行：每个 content block 一行，流式过程中还会再写。
+# 用量必须按 id 去重，否则 input / 缓存按行数成倍虚高（实测 109 份 transcript：input 1.97×）。
+iddup() {  # $1=文件名 $2..=每行一个 "id|input|cache_write|cache_read|output"（id 为 - 表示没有 id）
+  local f="${TMP}/sub/$1"; shift
+  python3 - "${f}" "$@" <<'PY'
+import json, sys
+f, specs = sys.argv[1], sys.argv[2:]
+with open(f, "w", encoding="utf-8") as fh:
+    fh.write(json.dumps({"type": "user", "message": {"role": "user", "content": "x"}}) + "\n")
+    for spec in specs:
+        mid, i, cw, cr, o = spec.split("|")
+        msg = {"role": "assistant", "model": "claude-haiku-4-5", "content": [],
+               "usage": {"input_tokens": int(i), "cache_creation_input_tokens": int(cw),
+                         "cache_read_input_tokens": int(cr), "output_tokens": int(o)}}
+        if mid != "-":
+            msg["id"] = mid
+        fh.write(json.dumps({"type": "assistant", "message": msg}) + "\n")
+json.dump({"toolUseId": "u-" + f}, open(f[:-len(".jsonl")] + ".meta.json", "w", encoding="utf-8"))
+PY
+}
+iddup dup-same.jsonl "m1|10|100|1000|5" "m1|10|100|1000|5"
+runv2 audit "$(stopp "${TMP}/sub/dup-same.jsonl")" subagent-stop
+check "usage-dedup：同一 message.id 写两行、用量相同 → 只算一次" \
+  "$(lastlog 'r["usage"] == {"input_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000, "output_tokens": 5}')"
+iddup dup-grow.jsonl "m1|10|100|1000|10" "m1|10|100|1000|40"
+runv2 audit "$(stopp "${TMP}/sub/dup-grow.jsonl")" subagent-stop
+check "usage-dedup：同一 id 流式增长（output 10 → 40）→ 取 40，不是 50 也不是 10" \
+  "$(lastlog 'r["usage"]["output_tokens"] == 40 and r["usage"]["input_tokens"] == 10')"
+iddup dup-grow-rev.jsonl "m1|10|100|1000|40" "m1|10|100|1000|10"
+runv2 audit "$(stopp "${TMP}/sub/dup-grow-rev.jsonl")" subagent-stop
+check "usage-dedup：较大的行排在前面也取最大（不是取最后一行）" "$(lastlog 'r["usage"]["output_tokens"] == 40')"
+iddup dup-two.jsonl "m1|10|100|1000|5" "m2|1|20|300|7"
+runv2 audit "$(stopp "${TMP}/sub/dup-two.jsonl")" subagent-stop
+check "usage-dedup：两个不同 id → 相加" \
+  "$(lastlog 'r["usage"] == {"input_tokens": 11, "cache_creation_input_tokens": 120, "cache_read_input_tokens": 1300, "output_tokens": 12}')"
+iddup dup-anon.jsonl "-|10|100|1000|5" "-|10|100|1000|5"
+runv2 audit "$(stopp "${TMP}/sub/dup-anon.jsonl")" subagent-stop
+check "usage-dedup：两行都没有 id（用量相同）→ 各算各的，不合并" \
+  "$(lastlog 'r["usage"] == {"input_tokens": 20, "cache_creation_input_tokens": 200, "cache_read_input_tokens": 2000, "output_tokens": 10}')"
+check "usage-dedup：有用量时记 usage_basis=message-id-dedup" "$(lastlog 'r["usage_basis"] == "message-id-dedup"')"
+runv2 audit "$(stopp "${TMP}/sub/nousage.jsonl")" subagent-stop
+check "usage-dedup：用量未知（None）时不写 usage_basis" "$(lastlog 'r["usage"] is None and "usage_basis" not in r')"
+runv2 audit "$(stopp "${TMP}/sub/missing.jsonl")" subagent-stop
+check "usage-dedup：transcript 不存在时不写 usage_basis" "$(lastlog 'r["transcript_status"] == "missing" and "usage_basis" not in r')"
 # env=off 会被薄壳快速路径拦下，这里走状态文件，才真正测到 python 这一侧
 OFFD="${TMP}/v2-off"; mkdir -p "${OFFD}"; printf 'off\n' > "${OFFD}/mode"
 printf '%s' "$(stopp "${TMP}/sub/agent-a.jsonl")" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" TIER_GUARD_LOG_DIR="${OFFD}" \
