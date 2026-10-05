@@ -476,14 +476,17 @@ adapter 已输出 `updatedInput`，不等于宿主接收或子代理实际执行
 
 1. **选够用的最便宜模型**：沿用既有路由（pin > floor > tier > 推断），候选目录按实测更新。
 2. **不省钱时提示「自己做」**：所选候选不比主代理自身模型便宜时（例如主会话 opus 而任务为 L3，或 Codex 主会话
-   `gpt-6.1-sol/medium` 而 L2 候选仍是 sol），`tier-routing` 提示主代理在主会话里自己完成，不派。**只在 skill 层实现**：
+   `gpt-6.1-sol/medium` 而 L2 候选仍是 sol——Task 25 之前的情形），`tier-routing` 提示主代理在主会话里自己完成，不派。
+   Task 23 实测后补充：**任务小而明确时也自己做**——派活后主会话轮次不减，子代理花费全是增量（2026-10-05 已写入 skill）。**只在 skill 层实现**：
    主代理知道自己的模型；hook 暂不读取主会话模型（Claude 可读主 transcript 末尾、Codex 可查线程表，均未实测开销）。
    具体写法以 H1 的实测转折点为依据。
 3. **观测覆盖率**：继续报告实际执行模型与用量的可得比例，包括宿主未写 transcript 的占比。
 
 ### Codex 的 L2 候选
 
-当前 Codex L2 候选 `gpt-6.1-sol/medium` 恰好等于 Codex 主会话默认模型，派出去没有差价。只有当 10 个 L2 任务的对照
+原 Codex L2 候选 `gpt-6.1-sol/medium` 恰好等于 Codex 主会话默认模型，派出去没有差价。**2026-10-05 已据实验改为
+`gpt-6-luna/high`**（10/10 对 10/10、每任务成本约 1/14，见 [Codex L2 Luna 实验](../docs/research/2026-10-05-codex-l2-luna-experiment.md)），
+由原 L1 候选 `codex-luna-high` 同时承担 L1 与 L2，`codex-sol-medium` 移出目录。只有当 10 个 L2 任务的对照
 实验显示 `gpt-6-luna` 质量与 Sol/medium 持平、且每任务成本更低时，才把 L2 改为 Luna。为此允许放开候选目录的既有约束
 「升档只许动 effort，不许换 slug」（2026-10-05 用户确认）。Luna 不过关时如实告知 spec-guard，由其把 Codex 上的 L2 改为不派。
 

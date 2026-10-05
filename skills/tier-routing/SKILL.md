@@ -17,13 +17,25 @@ tier-guard 只在创建子代理时工作，绝不切换主代理的 `model` 或
 
 这不是固定任务模板：主代理先按本次任务判断是机械只读、受限实现，还是跨模块取舍，再从能力目录取对应的最低成本行。
 
+## 先想清楚该不该派
+
+派子代理是为了省钱，不省就自己做。以下两种情况，**在主会话里自己完成通常更便宜**：
+
+- **所选候选不比你自己的模型便宜**：例如你是 opus 而任务要 L3（候选也是 opus），或者你的模型与候选相同。
+  派出去没有差价，只多了一份子代理的上下文开销。
+- **任务小而明确**：几次工具调用就能做完、规格清楚的任务。实测（opus 主会话、sonnet 子代理）派出去整体更贵
+  （+19%～+63%）：派了之后你仍要读 diff、跑测试、提交，主会话的轮次并没有减少，子代理的花费全是额外的。
+
+值得派的是需要大量探索或调试的任务（要先读懂很多现有代码、跨多个文件改动），它能让主会话少跑许多轮；主会话上下文
+越长，每少跑一轮省得越多。决定派了，再按下表选最低成本合格候选。
+
 ## 当前候选目录
 
 <!-- candidate-table:begin -->
 | 所需能力 | Claude Code | Codex CLI |
 |---|---|---|
 | mechanical + read_only | `haiku` | `gpt-6-luna` / `high` |
-| implementation + bounded_change | `sonnet` | `gpt-6.1-sol` / `medium` |
+| implementation + bounded_change | `sonnet` | `gpt-6-luna` / `high` |
 | tradeoff + cross_cutting | `opus` | `gpt-6.1-sol` / `xhigh` |
 <!-- candidate-table:end -->
 

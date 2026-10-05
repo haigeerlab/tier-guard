@@ -89,8 +89,10 @@
   - 两档都是派更贵（+63% / +19%，均约 +$0.20）；H1 未被支持：派活时主会话轮次没减少。回本要看 task 能省几轮主会话，小 task 永不划算
 - [x] Task 24 · Codex L2 对照：Luna（high / xhigh）vs Sol/medium，10 个 L2 任务
   - Luna/high 10/10，成本约 Sol 的 1/14；可以承担 L2
-- [ ] Task 25 · 若 Luna 过关：Codex L2 改为 Luna（发版前先问）
-- [ ] Task 26 · tier-routing 加「所选候选不比你便宜就自己做」
+- [x] Task 25 · 若 Luna 过关：Codex L2 改为 Luna（发版前先问）
+  - `codex-luna-high` 同时承担 L1/L2，`codex-sol-medium` 移出目录；L3 仍为 sol/xhigh
+- [x] Task 26 · tier-routing 加「所选候选不比你便宜就自己做」
+  - 另加「任务小而明确也自己做」，依据 Task 23 实测；与 spec-guard「默认不派」一致
 - [ ] Task 27 · 与 spec-guard 联调：Claude / Codex × 派 / 不派，成本报告与日志交叉核对
 
 ## 待补宿主验收（不改变生产配置）

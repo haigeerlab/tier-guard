@@ -176,8 +176,14 @@ check "v2 auto：不透明任务令牌不自动改写，避免无语义依据的
   "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
 check "v2 auto：不透明任务令牌保留审计但 applied=false" \
   "$(lastlog 'r["task_visibility"] == "opaque_token" and r["host_pre_dispatch_apply"] is True and r["applied"] is False')"
-runv2 audit "$(sp $'完成后 git push 到 origin。\n验收：远端分支可见。' gpt-6.1-sol medium)"
-check "v2 audit：显式 pin 仍报告 sol/medium → sol/xhigh 的 raise，但不产出 target" \
+runv2 audit "$(sp $'实现 parse_duration，只动 util.py。\n验收：tests/test_util.py 全部通过。' - -)"
+check "catalog25：v2 audit：L2（受限实现 + 明确验收）的 Codex 目标是 codex-luna-high" \
+  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["requirements"] == ["implementation", "bounded_change"] and r["decision"]["target"] == {"id": "codex-luna-high", "model": "gpt-6-luna", "reasoning_effort": "high"} and r["applied"] is False')"
+runv2 audit "$(sp $'比较两种缓存架构并权衡后选一个。\n验收：给出取舍理由。' - -)"
+check "catalog25：v2 audit：L3（取舍）的 Codex 目标仍是 codex-sol-xhigh" \
+  "$(lastlog 'r["routing_version"] == 2 and r["decision"]["requirements"] == ["tradeoff", "cross_cutting"] and r["decision"]["target"]["id"] == "codex-sol-xhigh"')"
+runv2 audit "$(sp $'完成后 git push 到 origin。\n验收：远端分支可见。' gpt-6-luna high)"
+check "v2 audit：显式 pin 仍报告 luna/high → sol/xhigh 的 raise，但不产出 target" \
   "$(lastlog 'r["routing_version"] == 2 and r["decision"]["action"] == "raise" and r["decision"]["target"] is None and r["decision"]["recommended"]["id"] == "codex-sol-xhigh" and r["applied"] is False')"
 rm -rf "${LOGD}"
 runv2 audit "$(sp $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - - gpt-5.6-terra collaboration.spawn_agent)"

@@ -182,3 +182,11 @@ v2 里「不许自动选某个模型」的机制是：候选必须在 `candidate
   （`26.908.40834` / `0.154.0`）不同。hook 依赖的字段已核实未变（复验协议 B 节：记录键集与
   0.154–0.158 的 20 条旧记录逐层一致）；**原始 payload 里有没有 hook 尚未读取的新字段，仍无法验证**。
 - Codex 宿主能力闸门（`pre_dispatch_apply`、`dispatch_nudge`）保持关闭，本次未改动。
+
+## 2026-10-05 更新：Codex L2 移到 Luna
+
+上表与「L2 / L3 同 slug 只动 effort」的取舍记录的是当时的决定，保留不改。同日稍晚，[Task 24 实验](2026-10-05-codex-l2-luna-experiment.md)
+在 10 个 L2 任务上得到 `gpt-6-luna/high` 与 `gpt-6.1-sol/medium` 10/10 对 10/10、每任务约 1/14 成本，用户同意放开
+「升档只许动 effort，不许换 slug」。现行 Codex 候选只有两个：`codex-luna-high`（`gpt-6-luna` / `high`，能力
+mechanical + read_only + implementation + bounded_change）与 `codex-sol-xhigh`；`codex-sol-medium` 已删除，L2→L3 现在换 slug。
+天花板效应的局限见实验文档。

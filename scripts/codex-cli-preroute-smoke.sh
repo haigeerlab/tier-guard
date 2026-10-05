@@ -28,7 +28,7 @@ SMOKE_LOG_DIR="${SMOKE_DIR}/tier-logs"
 mkdir -p "${SMOKE_LOG_DIR}"
 CODEX_STATE_DB="${CODEX_HOME:-${HOME}/.codex}/state_5.sqlite"
 
-PROMPT=$'Use the installed tier-routing skill. Create exactly three native child agents, one at a time, and wait for each. The parent may read the skill but must not modify the project. Do not tell me model choices before spawning.\n\nChild A is a mechanical read-only task; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_LUNA_OK.\n\nChild B is a bounded implementation task with explicit acceptance; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_SOL_OK.\n\nChild C compares approaches involving risk, cost, and rollback tradeoffs; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_XHIGH_OK.\n\nFor each child, independently choose and explicitly pass the lowest-cost qualified model and reasoning effort according to tier-routing. After all three finish, report their replies only.'
+PROMPT=$'Use the installed tier-routing skill. Create exactly three native child agents, one at a time, and wait for each. The parent may read the skill but must not modify the project. Do not tell me model choices before spawning.\n\nChild A is a mechanical read-only task; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_LUNA_OK.\n\nChild B is a bounded implementation task with explicit acceptance; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_L2_OK.\n\nChild C compares approaches involving risk, cost, and rollback tradeoffs; it must not use tools, read files, write files, or run commands, and must reply exactly CLI_PREROUTE_XHIGH_OK.\n\nFor each child, independently choose and explicitly pass the lowest-cost qualified model and reasoning effort according to tier-routing. After all three finish, report their replies only.'
 
 echo "隔离工作目录：${SMOKE_DIR}"
 echo "（信任只在首次运行时询问一次，作用于 ${SMOKE_ROOT}）"
@@ -68,6 +68,6 @@ for row in con.execute(
 PY
 
 echo ""
-echo "通过条件：三个 child 回复、三条对应审计记录，且线程实际为 gpt-6-luna/high、gpt-6.1-sol/medium、gpt-6.1-sol/xhigh。"
-echo "父线程应保持 gpt-6.1-sol / high 不变；任何 child 出现 sol/high 即为继承而非路由。"
+echo "通过条件：三个 child 回复、三条对应审计记录，且线程实际为 gpt-6-luna/high、gpt-6-luna/high、gpt-6.1-sol/xhigh（child B 是受限实现，2026-10-05 起 L2 也走 luna/high）。"
+echo "父线程应保持 gpt-6.1-sol / high 不变；任何 child 出现 sol/high 即为继承而非路由；child B 若是 sol/medium 说明还在用旧目录。"
 echo "保留上述目录作证据；本脚本不会删除它。"

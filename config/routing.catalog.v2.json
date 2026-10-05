@@ -97,16 +97,7 @@
       "reasoning_effort": "high",
       "cost_rank": 1,
       "auto_eligible": true,
-      "capabilities": ["mechanical", "read_only"]
-    },
-    {
-      "id": "codex-sol-medium",
-      "host": "codex-cli",
-      "model": "gpt-6.1-sol",
-      "reasoning_effort": "medium",
-      "cost_rank": 2,
-      "auto_eligible": true,
-      "capabilities": ["implementation", "bounded_change"]
+      "capabilities": ["mechanical", "read_only", "implementation", "bounded_change"]
     },
     {
       "id": "codex-sol-xhigh",

@@ -990,7 +990,7 @@ def selftest():
     case("catalog_summary：claude-code 摘要不含 codex 候选 model",
          not any(m in claude_summary for m in ("gpt-6-luna", "gpt-6.1-sol")))
     case("catalog_summary：codex-cli 候选按成本从低到高出现，且带 effort",
-         _in_order(codex_summary, ["gpt-6-luna / high", "gpt-6.1-sol / medium", "gpt-6.1-sol / xhigh"]))
+         _in_order(codex_summary, ["gpt-6-luna / high", "gpt-6.1-sol / xhigh"]))
     case("catalog_summary：codex-cli 摘要不含 claude 候选 model",
          not any(m in codex_summary for m in ("haiku", "sonnet", "opus")))
     case("catalog_summary：两个宿主都带保守兜底句",

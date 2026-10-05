@@ -3,6 +3,37 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `tier-routing` now tells the main agent when not to dispatch at all. If the
+  chosen candidate is not cheaper than the main agent's own model, or the task
+  is small and well specified, doing it in the main session is usually
+  cheaper. Measured with an opus main session and sonnet subagents on two small
+  tasks: dispatching cost 19% to 63% more, because the main session still read
+  the diff, ran the tests and committed, so it made as many turns as doing the
+  work itself and every subagent was pure extra. Dispatch pays off for tasks
+  that need a lot of exploration or debugging. Details in
+  `docs/research/2026-10-05-dispatch-cost-experiment.md`.
+
+### Changed
+
+- Codex L2 (bounded implementation with explicit acceptance) now routes to
+  `gpt-6-luna` / `high` instead of `gpt-6.1-sol` / `medium`. The candidate
+  `codex-sol-medium` is removed and `codex-luna-high` takes the
+  `implementation` and `bounded_change` capabilities; L3 stays on
+  `codex-sol-xhigh`. On 10 L2 tasks both arms passed 10/10 with no test
+  tampering, and Luna cost about 1/14 as much per task ($0.0050 against
+  $0.0690 with cached input at 10%, $0.0171 against $0.2636 at full price).
+  `gpt-6.1-sol` / `medium` is also the default model of a Codex main session,
+  so dispatching to it saved nothing. The evidence has a ceiling effect: all
+  arms hit 10/10, so it shows Luna is enough for typical L2 work, not for
+  harder L2 work, and each cell ran once. This changes the previous rule that
+  tier upgrades only change effort: L2 to L3 on Codex now changes the model
+  slug too. The Claude candidates and the frozen v1 table are unchanged.
+  Evidence: `docs/research/2026-10-05-codex-l2-luna-experiment.md`.
+
 ## [0.2.4] - 2026-10-05
 
 ### Fixed

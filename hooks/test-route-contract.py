@@ -104,13 +104,34 @@ def main():
         disk_catalog = json.load(fh)
     assert rd.load_catalog(os.path.join(root, "config", "routing.catalog.v2.json"))["schema_version"] == 2
     # 生产 Codex 候选（2026-10 价格/能力更新，见 docs/research/2026-10-model-catalog-update.md）：
-    # terra 更贵更弱已移出；L1 用 gpt-6-luna（半价、分数持平），L2/L3 同 slug 只动 effort。
+    # terra 更贵更弱已移出；L1 用 gpt-6-luna（半价、分数持平）。2026-10-05 Task 25：L2 也移到 Luna/high
+    # （10/10 对 10/10，每任务约 1/14 成本，见 docs/research/2026-10-05-codex-l2-luna-experiment.md），
+    # 所以 sol-medium 候选已删除，L2→L3 现在换 slug。
     assert [(c["id"], c["model"], c["reasoning_effort"])
             for c in rd.catalog_candidates(disk_catalog, "codex-cli")] == [
         ("codex-luna-high", "gpt-6-luna", "high"),
-        ("codex-sol-medium", "gpt-6.1-sol", "medium"),
         ("codex-sol-xhigh", "gpt-6.1-sol", "xhigh"),
     ], rd.catalog_candidates(disk_catalog, "codex-cli")
+    # catalog25：L2（implementation + bounded_change，明确验收）在 Codex 上路由到 luna；L3 仍是 sol/xhigh。
+    codex_l2 = rd.route({
+        "task": "实现 parse_duration，只动 util.py。\n验收：tests/test_util.py 全部通过。",
+        "host": "codex-cli",
+        "requested": {"pinned": False},
+        "signals": {"side_effect": "reversible_write", "acceptance": "explicit",
+                    "scope": "bounded", "decision_load": "implementation"},
+    }, disk_catalog)
+    assert codex_l2["requirements"] == ["implementation", "bounded_change"], codex_l2
+    assert codex_l2["target"] == {"id": "codex-luna-high", "model": "gpt-6-luna",
+                                  "reasoning_effort": "high"}, codex_l2
+    codex_l3 = rd.route({
+        "task": "比较两种迁移方案的风险、成本与回滚取舍。",
+        "host": "codex-cli",
+        "requested": {"pinned": False},
+        "signals": {"side_effect": "reversible_write", "acceptance": "explicit",
+                    "scope": "cross_cutting", "decision_load": "tradeoff"},
+    }, disk_catalog)
+    assert codex_l3["requirements"] == ["tradeoff", "cross_cutting"], codex_l3
+    assert codex_l3["target"]["id"] == "codex-sol-xhigh", codex_l3
     # Claude Code 的 Agent 工具没有 effort 通道（2.1.289 schema：model 是 sonnet/opus/haiku/fable
     # 四值枚举，无 reasoning_effort 字段），所以 Claude 候选一律 effort=None，且只能写别名不能写完整 ID。
     assert [(c["id"], c["model"], c["reasoning_effort"])
