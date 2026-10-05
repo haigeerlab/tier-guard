@@ -3,7 +3,7 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.6] - 2026-10-06
 
 ### Added
 
@@ -15,6 +15,10 @@ All notable user-facing changes are documented here. Version numbers follow
   even though the Luna subagents cost about $0.07 in total. Codex's own prompt
   already says to prefer waits of minutes and was not followed. spec-guard's
   dispatch rule says the same thing.
+  Verified in a rerun with the guidance in place: waits dropped to 5-7 per
+  run, each lasting until the subagent finished (up to 261s, no truncation),
+  and dispatching every task cost the same as not dispatching instead of more
+  than double.
 
 ### Fixed
 
