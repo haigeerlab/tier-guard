@@ -55,7 +55,8 @@ CLI 版本直接钉进证据，比事后回忆可靠。该列是 0.160 的 `thre
 
 ## A · Codex：主代理明文预路由三档（在真实 TUI 中执行）
 
-`codex exec` 不行：该入口的 collaboration wait 不创建可观察 child。**必须在交互式 Terminal/TUI 中跑。**
+`codex exec` 不行：该入口的 collaboration wait 不创建可观察 child。（**2026-10-05 更正**：这是 CLI 0.154 时的结论；
+在 0.160.0 上 `codex exec` 能派出子代理——spec-guard 联调的 exec 运行在线程表里都有 `thread_spawn` 子线程，`parent_thread_id` 指向主线程。下面的 TUI 流程仍然有效。）**必须在交互式 Terminal/TUI 中跑。**
 
 ```bash
 cd /Users/vilin/Documents/haigeerlab/tier-guard && /bin/bash scripts/codex-cli-preroute-smoke.sh

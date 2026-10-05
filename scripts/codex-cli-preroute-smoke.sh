@@ -1,6 +1,8 @@
 #!/bin/bash
 # 在真实交互式 Terminal 中验收 Codex CLI 的主代理明文预路由。
-# 不使用 codex exec：该入口的 collaboration wait 不会创建可观察 child。
+# 历史：CLI 0.154 时 codex exec 的 collaboration wait 不会创建可观察 child，所以本脚本走交互式 TUI。
+# 2026-10-05 更正：CLI 0.160.0 上 codex exec 能正常派子代理（线程表 source=exec 的主线程下有子线程，
+# 子线程 source.subagent.thread_spawn.parent_thread_id 指向主线程）。本脚本仍用 TUI 以保持与既有证据一致。
 set -eu
 
 if [ ! -t 0 ] || [ ! -t 1 ]; then

@@ -105,7 +105,9 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 该命令覆盖路由合同、Claude/Codex adapter、模式与报告、审计和插件结构检查。
 
-真实 Codex CLI 的三档主代理预路由验收必须在 Terminal/TUI 中运行，不能用 `codex exec` 代替：
+真实 Codex CLI 的三档主代理预路由验收用下面的脚本在 Terminal/TUI 中运行（与既有证据保持一致）。
+CLI 0.154 时 `codex exec` 派不出可观察的子代理；0.160.0 起已经可以，`exec` 主线程下会出现带
+`thread_spawn.parent_thread_id` 的子线程。
 
 ```bash
 /bin/bash scripts/codex-cli-preroute-smoke.sh
