@@ -76,8 +76,10 @@
   - 偏离计划：计划写「缺 `session_id` 不 deny」，那是从预路由提醒照搬的笔误；按 spec D3，收回不依赖 `session_id`，缺了照样 deny
   - 生产影响：Claude 闸门开着，guard 下带 `tier=L2 failures>=2` 的派活会被真实拦下；Codex 闸门关闭，行为不变
 - [x] Task 21 · tier-routing skill、README、CHANGELOG、spec 同步（含 Codex hook 读不到标记的限制）
-- [ ] Task 22 · Claude Code 真实宿主验证标记 / floor / 收回（跑前确认写 `~/.claude`）
-- [ ] Checkpoint · Phase 7 complete
+- [x] Task 22 · Claude Code 真实宿主验证标记 / floor / 收回（跑前确认写 `~/.claude`）
+  - 五个用例全部符合 spec；收回 deny 生效且未消耗会话标记。证据：[`upstream tier host check`](../../docs/research/2026-10-05-upstream-tier-host-check.md)
+  - 顺带发现两件旧事：停止记录 `actual_execution` 偶发为空（疑似 transcript 未落盘）；首次 deny 文案写死「（auto）」
+- [x] Checkpoint · Phase 7 complete（spec 中上游档位 / floor / `tier_source` / 升档 / 不漏日志各有通过的断言；变异 241 / 0 / 0；Claude 宿主证据已有，Codex 限制已写明）
 
 ## 待补宿主验收（不改变生产配置）
 
