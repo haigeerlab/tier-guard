@@ -3,6 +3,17 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The dispatch cost figures quoted in 0.2.5 priced every cache write at 1.25x
+  input. Claude Code's main session writes one-hour cache entries (2x input)
+  while subagents write five-minute ones (1.25x), so the main session was
+  undercounted. Corrected: dispatching the small tasks cost 15% to 54% more,
+  not 19% to 63%, still about $0.21 more per run; the direction is unchanged.
+  The `tier-routing` wording and the research note carry the corrected numbers.
+
 ## [0.2.5] - 2026-10-05
 
 ### Added

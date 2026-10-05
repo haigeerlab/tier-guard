@@ -589,8 +589,8 @@ host-no-transcript share low enough to be representative — is not met); any `/
 「升档只许动 effort，不许换 slug」 may be relaxed if Codex L2 moves to Luna; the "not cheaper → do it yourself" hint starts in
 the `tier-routing` skill only, no hook change.
 
-**Why first:** whole-flow accounting on the textkit acceptance runs (sonnet parent) showed dispatch cost 2.1–3.0× the inline
-run ($0.50–0.70 vs $0.233). A cheaper child model is necessary but not sufficient; the likely saving lever is main-session
+**Why first:** whole-flow accounting on the textkit acceptance runs (sonnet parent) showed dispatch cost 2.0–2.8× the inline
+run ($0.55–0.77 vs $0.271, after correcting cache-write pricing; first reported as 2.1–3.0×). A cheaper child model is necessary but not sufficient; the likely saving lever is main-session
 context size (each inline tool call re-reads it). That has to be measured before any rule depends on it.
 
 #### Task 23: Claude dispatch cost experiment
