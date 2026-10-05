@@ -275,6 +275,13 @@ def _route_signals(request, cfg, task, context_signals=None):
     return values
 
 
+def _danger_signals(signals):
+    """不可逆 / 歧义 / 跨模块 / 取舍：floor 的唯一判据，_requirements 与 _floor_hit 共用，只写这一处。"""
+    return (signals["side_effect"] == "external_or_irreversible"
+            or signals["acceptance"] == "missing_or_ambiguous"
+            or signals["scope"] == "cross_cutting" or signals["decision_load"] == "tradeoff")
+
+
 def _requirements(signals):
     """从任务需求而非请求起点导出候选能力；未知一律走保守分支。"""
     if (signals["side_effect"] == "read_only" and signals["scope"] == "small"
@@ -283,11 +290,19 @@ def _requirements(signals):
     if (signals["side_effect"] == "reversible_write" and signals["acceptance"] == "explicit"
             and signals["scope"] == "bounded" and signals["decision_load"] == "implementation"):
         return ["implementation", "bounded_change"], "high"
-    if (signals["side_effect"] == "external_or_irreversible"
-            or signals["acceptance"] == "missing_or_ambiguous"
-            or signals["scope"] == "cross_cutting" or signals["decision_load"] == "tradeoff"):
+    if _danger_signals(signals):
         return ["tradeoff", "cross_cutting"], "medium"
     return ["tradeoff", "cross_cutting"], "low"
+
+
+# v2 里唯一可能的 floor 档。信息不足（全 unknown）的保守档不是 floor（D2）。
+FLOOR_TIER = "L3"
+
+
+def _floor_hit(signals, required):
+    """危险信号命中且推断确实落在 L3。只读 + 小范围 + 机械的任务由 _requirements 第一支先接走（沿用
+    v1 的只读豁免），此时即便验收缺失也不构成 floor。"""
+    return _danger_signals(signals) and required == TIER_REQUIREMENTS[FLOOR_TIER]
 
 
 def _candidate_view(candidate):
@@ -329,20 +344,27 @@ def _route(request, cfg):
     upstream = _upstream_tier(task, envelope_tier)
     signals = _route_signals(request, cfg, task, context_signals)
     required, confidence = _requirements(signals)
-    tier_source = "inferred"
-    # 临时安全规则（Task 17 以 pin > floor > tier > inferred 的 floor 优先级取代）：
-    # 上游档位只能把需求抬到推断之上；相等或更低一律沿用推断。
+    # 优先级 pin > floor > tier > 推断：上游 tier 可低于推断（含 D2 的信息不足保守档），
+    # 但不能压到 floor 之下；低于 floor 时按 floor 取并记录冲突。
+    floor = _floor_hit(signals, required)
+    tier_source = "floor" if floor else "inferred"
+    tier_conflict = None
     if upstream["status"] == "accepted":
-        inferred_rank = next(i for i, t in enumerate(UPSTREAM_TIERS) if TIER_REQUIREMENTS[t] == required)
-        if UPSTREAM_TIERS.index(upstream["tier"]) > inferred_rank:
+        if floor and UPSTREAM_TIERS.index(upstream["tier"]) < UPSTREAM_TIERS.index(FLOOR_TIER):
+            tier_conflict = {"upstream": upstream["tier"], "floor": FLOOR_TIER}
+        else:
             required = list(TIER_REQUIREMENTS[upstream["tier"]])
             tier_source = "upstream"
+    if requested.get("pinned") is True:
+        tier_source = "pin"
     candidates = catalog_candidates(cfg, host)
     eligible = [c for c in candidates if set(required).issubset(c["capabilities"])]
     base = {"profile": cfg["mode"], "host": host, "requirements": required,
             "confidence": confidence, "signals": signals, "requested": requested,
             "optional_context": context_status, "semantic_provider": {"status": "disabled"},
             "upstream_tier": upstream, "tier_source": tier_source}
+    if tier_conflict is not None:
+        base["tier_conflict"] = tier_conflict
     if not eligible:
         return dict(base, action="unsupported", target=None, recommended=None,
                     fallback="没有满足需求的自动候选")

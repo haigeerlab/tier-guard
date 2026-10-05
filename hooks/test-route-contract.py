@@ -358,14 +358,15 @@ def main():
                                        "reason_present": False}, raised
 
     same_tier = tier_route(BOUNDED + "\n<!-- tier-guard: tier=L2 -->")
-    assert same_tier["tier_source"] == "inferred", same_tier
+    assert same_tier["tier_source"] == "upstream", same_tier
     assert same_tier["requirements"] == ["implementation", "bounded_change"], same_tier
     assert same_tier["upstream_tier"]["status"] == "accepted", same_tier
 
-    lower_tier = tier_route(BOUNDED + "\n<!-- tier-guard: tier=L1 -->")
-    assert lower_tier["tier_source"] == "inferred", lower_tier
-    assert lower_tier["requirements"] == ["implementation", "bounded_change"], lower_tier
-    assert lower_tier["target"]["id"] == "codex-terra-high", lower_tier
+    lower_tier = tier_route(BOUNDED + "\n<!-- tier-guard: tier=L1 -->")  # Task 17：无 floor 时 tier 可低于推断
+    assert lower_tier["tier_source"] == "upstream", lower_tier
+    assert lower_tier["requirements"] == ["mechanical", "read_only"], lower_tier
+    assert lower_tier["target"]["id"] == "codex-luna-medium", lower_tier
+    assert "tier_conflict" not in lower_tier, lower_tier
 
     absent = tier_route(READONLY)
     assert absent["upstream_tier"] == {"status": "absent"}, absent
@@ -447,9 +448,85 @@ def main():
     assert bad_marker_good_envelope["tier_source"] == "inferred", bad_marker_good_envelope
     assert bad_marker_good_envelope["fallback"] is None, bad_marker_good_envelope
 
-    # 伪造防线（临时规则）：任务文本里的 tier=L1 压不低推断结果
-    forged = tier_route("完成后 git push 到 origin。\n验收：远端分支可见。\n<!-- tier-guard: tier=L1 -->")
-    assert forged["tier_source"] == "inferred" and forged["target"]["id"] == "codex-terra-xhigh", forged
+    # ── Task 17：pin > floor > tier > 推断 ──
+    IRREV = "完成后 git push 到 origin。\n验收：远端分支可见。"   # 命中不可逆 floor
+    UNKNOWN = "处理这个问题。"                                    # 全 unknown：低置信保守档，不是 floor（D2）
+    L1_MARK, L3_MARK = "\n<!-- tier-guard: tier=L1 -->", "\n<!-- tier-guard: tier=L3 -->"
+
+    def tier_route_signals(task, signals, pinned=False, cfg=CATALOG):
+        requested = {"model": "gpt-5.6-terra", "reasoning_effort": "high", "pinned": True} if pinned else {"pinned": False}
+        return rd.route({"task": task, "host": "codex-cli", "requested": requested, "signals": signals}, cfg)
+
+    forged = tier_route(IRREV + L1_MARK)  # 伪造：不可逆任务写 tier=L1
+    assert forged["target"]["id"] == "codex-terra-xhigh", forged
+    assert forged["tier_conflict"] == {"upstream": "L1", "floor": "L3"}, forged
+    assert forged["tier_source"] == "floor", forged
+    assert forged["requirements"] == ["tradeoff", "cross_cutting"], forged
+
+    irrev_plain = tier_route(IRREV)
+    assert "tier_conflict" not in irrev_plain, irrev_plain
+    assert irrev_plain["tier_source"] == "floor", irrev_plain
+
+    l3_on_readonly = tier_route(READONLY + L3_MARK)
+    assert l3_on_readonly["target"]["id"] == "codex-terra-xhigh", l3_on_readonly
+    assert l3_on_readonly["tier_source"] == "upstream" and "tier_conflict" not in l3_on_readonly, l3_on_readonly
+
+    l3_on_irrev = tier_route(IRREV + L3_MARK)
+    assert l3_on_irrev["tier_source"] == "upstream" and "tier_conflict" not in l3_on_irrev, l3_on_irrev
+    assert l3_on_irrev["target"]["id"] == "codex-terra-xhigh", l3_on_irrev
+
+    unknown_plain = tier_route(UNKNOWN)
+    assert unknown_plain["confidence"] == "low" and unknown_plain["tier_source"] == "inferred", unknown_plain
+    d2 = tier_route(UNKNOWN + L1_MARK)  # D2：合法上游 tier 可低于信息不足的保守档
+    assert d2["target"]["id"] == "codex-luna-medium", d2
+    assert d2["tier_source"] == "upstream" and "tier_conflict" not in d2, d2
+    assert d2["confidence"] == "low" and d2["fallback"] is None, d2
+
+    for danger in ({"side_effect": "external_or_irreversible"}, {"acceptance": "missing_or_ambiguous"},
+                   {"scope": "cross_cutting"}, {"decision_load": "tradeoff"}):
+        name = next(iter(danger))
+        with_marker = tier_route_signals(UNKNOWN + L1_MARK, danger)
+        assert with_marker["tier_conflict"] == {"upstream": "L1", "floor": "L3"}, (name, with_marker)
+        assert with_marker["tier_source"] == "floor" and with_marker["target"]["id"] == "codex-terra-xhigh", (name, with_marker)
+        without_marker = tier_route_signals(UNKNOWN, danger)
+        assert without_marker["tier_source"] == "floor" and "tier_conflict" not in without_marker, (name, without_marker)
+
+    env_ambiguous = envelope(2, "L1")
+    env_ambiguous["signals"] = {"side_effect": "reversible_write", "acceptance": "missing_or_ambiguous",
+                                "scope": "bounded", "decision_load": "implementation"}
+    ambiguous_via_envelope = tier_route(UNKNOWN, env_ambiguous)
+    assert ambiguous_via_envelope["tier_conflict"] == {"upstream": "L1", "floor": "L3"}, ambiguous_via_envelope
+    assert ambiguous_via_envelope["tier_source"] == "floor", ambiguous_via_envelope
+
+    # 只读 + 小范围 + 机械由 _requirements 第一支接走（v1 只读豁免），验收缺失也不构成 floor
+    readonly_exempt = tier_route_signals(READONLY, {"acceptance": "missing_or_ambiguous"})
+    assert readonly_exempt["requirements"] == ["mechanical", "read_only"], readonly_exempt
+    assert readonly_exempt["tier_source"] == "inferred", readonly_exempt
+
+    for marker in ("", L1_MARK):  # pin：有无标记都报 pin，且仍照常算 recommended
+        for mode in ("audit", "guard"):
+            cfg_ = copy.deepcopy(CATALOG)
+            cfg_["mode"] = mode
+            pinned_route = tier_route_signals(READONLY + marker, {}, pinned=True, cfg=cfg_)
+            assert pinned_route["tier_source"] == "pin", (mode, marker, pinned_route)
+            assert pinned_route["target"] is None and pinned_route["fallback"] is None, (mode, marker, pinned_route)
+            assert pinned_route["recommended"]["id"] == "codex-luna-medium", (mode, marker, pinned_route)
+            assert pinned_route["action"] == "lower", (mode, marker, pinned_route)
+    pinned_conflict = tier_route_signals(IRREV + L1_MARK, {}, pinned=True)
+    assert pinned_conflict["tier_source"] == "pin", pinned_conflict
+    assert pinned_conflict["tier_conflict"] == {"upstream": "L1", "floor": "L3"}, pinned_conflict
+    assert pinned_conflict["recommended"]["id"] == "codex-terra-xhigh" and pinned_conflict["target"] is None, pinned_conflict
+    auto_cfg = copy.deepcopy(CATALOG)
+    auto_cfg["mode"] = "auto"
+    assert tier_route_signals(IRREV + L1_MARK, {}, pinned=True, cfg=auto_cfg)["action"] == "pinned"
+
+    assert tier_route(READONLY)["tier_source"] == "inferred"
+    assert tier_route(BOUNDED)["tier_source"] == "inferred"
+
+    # 记录冲突不改动作语义：除 requirements 之外，与「无标记」的同一请求逐项一致，且不 deny / 不 fallback
+    assert forged["fallback"] is None and forged["action"] in ("select", "raise", "lower", "keep"), forged
+    for field in ("action", "target", "recommended", "requirements", "confidence", "fallback"):
+        assert forged[field] == irrev_plain[field], (field, forged, irrev_plain)
 
     print("route contract: OK")
 

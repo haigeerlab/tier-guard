@@ -63,7 +63,9 @@
 - [x] Task 16 · 解析上游档位标记（任务文本 + 信封 v2），记录 `tier_source` upstream / inferred
   - 过渡规则：上游档位暂时只许抬高、不许压低，Task 17 换成 floor 优先级。标记非法而信封合法时整体按 unavailable（保守）；
     pin 请求暂时也可能显示 `tier_source: upstream`，由 Task 17 的 `pin` 来源接管。变异体 21 条全部抓到
-- [ ] Task 17 · 优先级 pin > floor > tier > 推断，`tier_conflict`，伪造低档撤销不了 floor（正反断言）
+- [x] Task 17 · 优先级 pin > floor > tier > 推断，`tier_conflict`，伪造低档撤销不了 floor（正反断言）
+  - floor = 危险信号命中且推断落在 L3。只读 + 小范围 + 机械的任务即便显式标「验收缺失」也仍走 L1（沿用既有只读豁免）：
+    若算作 floor，带 `tier=L1` 反而会被抬到 L3，比不带标记还贵。该边角有断言和变异体守着，未改既有路由
 - [ ] Task 18 · 两个适配层的审计记录带上新字段；`reason` 与任务原文不入日志（断言覆盖）
 - [ ] Checkpoint · Upstream tier（validate + 变异 0 存活；D1 / D3 在此之前定下）
 - [ ] Task 19 · 按失败次数升档：L1 失败 → L2，只升不降、不低于 floor，记录 `escalation`

@@ -546,12 +546,6 @@ M = [
     ("tier16: failures 合法时不回传", RD, RTC,
      '''result["failures"] = int(failures)''',
      '''pass''', "killed"),
-    ("tier16: 升档比较写成不等（上游能压低推断）", RD, RTC,
-     '''UPSTREAM_TIERS.index(upstream["tier"]) > inferred_rank''',
-     '''UPSTREAM_TIERS.index(upstream["tier"]) != inferred_rank''', "killed"),
-    ("tier16: 升档比较写成大于等于（同档也记作 upstream）", RD, RTC,
-     '''UPSTREAM_TIERS.index(upstream["tier"]) > inferred_rank''',
-     '''UPSTREAM_TIERS.index(upstream["tier"]) >= inferred_rank''', "killed"),
     ("tier16: 标记与信封 tier 不一致仍采纳", RD, RTC,
      '''if marker["tier"] != envelope_tier:''',
      '''if False:''', "killed"),
@@ -572,6 +566,72 @@ M = [
     ("tier16: v1 信封不再被接受", RD, RTC,
      '''version not in (1, 2)''',
      '''version != 2''', "killed"),
+    # ── Task 17：pin > floor > tier > 推断，tier_conflict ──
+    ("tier17: 上游 L3 在 floor 下也记成冲突（< 改成 <=）", RD, RTC,
+     '''UPSTREAM_TIERS.index(upstream["tier"]) < UPSTREAM_TIERS.index(FLOOR_TIER)''',
+     '''UPSTREAM_TIERS.index(upstream["tier"]) <= UPSTREAM_TIERS.index(FLOOR_TIER)''', "killed"),
+    ("tier17: floor 比较写反（上游 L1 压穿 floor）", RD, RTC,
+     '''UPSTREAM_TIERS.index(upstream["tier"]) < UPSTREAM_TIERS.index(FLOOR_TIER)''',
+     '''UPSTREAM_TIERS.index(upstream["tier"]) > UPSTREAM_TIERS.index(FLOOR_TIER)''', "killed"),
+    ("tier17: 没有 floor 也按冲突处理（上游不能低于推断）", RD, RTC,
+     '''if floor and UPSTREAM_TIERS.index''',
+     '''if UPSTREAM_TIERS.index''', "killed"),
+    ("tier17: floor 判据丢了不可逆", RD, RTC,
+     '''return (signals["side_effect"] == "external_or_irreversible"
+            or''',
+     '''return (False
+            or''', "killed"),
+    ("tier17: floor 判据丢了验收缺失/歧义", RD, RTC,
+     '''or signals["acceptance"] == "missing_or_ambiguous"
+            or signals["scope"]''',
+     '''or False
+            or signals["scope"]''', "killed"),
+    ("tier17: floor 判据丢了跨模块", RD, RTC,
+     '''or signals["scope"] == "cross_cutting" or''',
+     '''or False or''', "killed"),
+    ("tier17: floor 判据丢了取舍", RD, RTC,
+     '''or signals["decision_load"] == "tradeoff")
+
+
+def _requirements''',
+     '''or False)
+
+
+def _requirements''', "killed"),
+    ("tier17: 低置信保守档被当成 floor（D2 被推翻）", RD, RTC,
+     '''return _danger_signals(signals) and required == TIER_REQUIREMENTS[FLOOR_TIER]''',
+     '''return required == TIER_REQUIREMENTS[FLOOR_TIER]''', "killed"),
+    ("tier17: 只读豁免失效（只读任务验收缺失也算 floor）", RD, RTC,
+     '''return _danger_signals(signals) and required == TIER_REQUIREMENTS[FLOOR_TIER]''',
+     '''return _danger_signals(signals)''', "killed"),
+    ("tier17: tier_conflict 恒不写", RD, RTC,
+     '''if tier_conflict is not None:''',
+     '''if False:''', "killed"),
+    ("tier17: tier_conflict 恒写（无冲突写 null）", RD, RTC,
+     '''if tier_conflict is not None:''',
+     '''if True:''', "killed"),
+    ("tier17: pin 请求不报 pin", RD, RTC,
+     '''if requested.get("pinned") is True:
+        tier_source = "pin"''',
+     '''if False:
+        tier_source = "pin"''', "killed"),
+    ("tier17: floor 来源标成 inferred", RD, RTC,
+     '''tier_source = "floor" if floor else "inferred"''',
+     '''tier_source = "inferred"''', "killed"),
+    ("tier17: 冲突时来源标成 upstream", RD, RTC,
+     '''tier_conflict = {"upstream": upstream["tier"], "floor": FLOOR_TIER}
+''',
+     '''tier_conflict = {"upstream": upstream["tier"], "floor": FLOOR_TIER}
+            tier_source = "upstream"
+''', "killed"),
+    ("tier17: 采纳上游 tier 后来源仍写 inferred", RD, RTC,
+     '''required = list(TIER_REQUIREMENTS[upstream["tier"]])
+            tier_source = "upstream"''',
+     '''required = list(TIER_REQUIREMENTS[upstream["tier"]])
+            tier_source = "inferred"''', "killed"),
+    ("tier17: 冲突记录里 floor 档写错", RD, RTC,
+     '''"floor": FLOOR_TIER}''',
+     '''"floor": "L2"}''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")
