@@ -116,6 +116,46 @@ def _v2_stops(recs):
     return stops
 
 
+def _usage_groups(all_stops):
+    """→ ([(实际执行, 用量)] 每个子代理一项, 只有修复前用量的子代理数)。
+
+    恢复运行的子代理会往同一份 transcript 追加并再触发一次 SubagentStop，每条 stop 记录存的都是
+    整份文件的累计用量 —— 按记录加会把同一个子代理算上好几遍。所以按 agent_transcript_path 分组
+    （没有路径的记录自成一组），每组只取一个用量来源：
+      a) transcript 还在：回读整份文件（累计且已按 message.id 去重），最权威；
+      b) 文件没了、组里有 usage_basis 标记的记录：取其中 ts 最晚的那条；
+      c) 文件没了、只有没标记的旧记录：用量被重复计算过（约 2×），不可信，单独计数、不入平均。"""
+    groups = {}
+    for i, r in enumerate(all_stops):
+        path = r.get("agent_transcript_path")
+        groups.setdefault(path if isinstance(path, str) and path else ("", i), []).append((i, r))
+    used, untrusted = [], 0
+    for key, members in groups.items():
+        recs = [r for _, r in members]
+        latest_exec = next((r["actual_execution"] for r in reversed(recs)
+                            if isinstance(r.get("actual_execution"), dict)), None)
+        execution = usage = None
+        if isinstance(key, str):
+            try:
+                _, _, model, usage = claude_hook.subagent_facts(key)
+            except (OSError, ValueError):
+                usage = None
+            if isinstance(usage, dict):
+                execution = {"model": model, "reasoning_effort": None} if model else latest_exec
+        if not isinstance(usage, dict):
+            marked = [(r.get("ts") or "", i, r) for i, r in members
+                      if r.get("usage_basis") == "message-id-dedup" and isinstance(r.get("usage"), dict)]
+            if marked:
+                best = max(marked, key=lambda t: t[:2])[2]
+                usage = best["usage"]
+                execution = best["actual_execution"] if isinstance(best.get("actual_execution"), dict) else latest_exec
+            elif any(isinstance(r.get("usage"), dict) for r in recs):
+                untrusted += 1
+        if isinstance(execution, dict) and isinstance(usage, dict):
+            used.append((execution, usage))
+    return used, untrusted
+
+
 def _v2_audit(out, recs, recent):
     routes = _v2_routes(recs)
     out += ["", "### v2 路由审计", ""]
@@ -142,15 +182,7 @@ def _v2_audit(out, recs, recent):
                    "这部分的实际执行无从观测，与守卫异常无关。")
     # 只报 token，不报成本：价格随模型和账号变动，把价格表写进插件等于埋一个会过期的「事实」。
     # 每任务 token 是宿主给出的硬事实，换算成钱由看报告的人按当时价格自己做。
-    used = []
-    for r in all_stops:
-        execution, usage = r.get("actual_execution"), r.get("usage")
-        if not (isinstance(execution, dict) and isinstance(usage, dict)):
-            late_execution, late_usage = _late_read(r)
-            execution = execution if isinstance(execution, dict) else late_execution
-            usage = usage if isinstance(usage, dict) else late_usage
-        if isinstance(execution, dict) and isinstance(usage, dict):
-            used.append((execution, usage))
+    used, untrusted = _usage_groups(all_stops)
     if used:
         by_model = {}
         for execution, usage in used:
@@ -162,14 +194,16 @@ def _v2_audit(out, recs, recent):
             for k, v in usage.items():
                 if k in acc and isinstance(v, int):
                     acc[k] += v
-        out += ["", "| 实际执行模型 | 次数 | 平均输入 | 平均缓存写 | 平均缓存读 | 平均输出 |",
+        out += ["", "| 实际执行模型 | 子代理数 | 平均输入 | 平均缓存写 | 平均缓存读 | 平均输出 |",
                 "|---|---|---|---|---|---|"]
         for m, a in sorted(by_model.items(), key=lambda kv: -kv[1]["n"]):
             n = a["n"]
             out.append(f"| {m} | {n} | {a['input_tokens']//n:,} | {a['cache_creation_input_tokens']//n:,} "
                        f"| {a['cache_read_input_tokens']//n:,} | {a['output_tokens']//n:,} |")
         out.append("")
-        out.append("只统计宿主回报了用量的派活；不换算成本（价格随模型与账号变动，不写进插件）。")
+        out.append("只统计宿主回报了用量的子代理；不换算成本（价格随模型与账号变动，不写进插件）。")
+    if untrusted:
+        out.append(f"另有 {untrusted} 个子代理只有修复前记下的用量（输入与缓存约重复计算一倍），未计入上表。")
     stops = _v2_stops(recs)
     out +=["", "| 时间 | 宿主 | 宿主可改写 | 请求 | 选择 / 建议 | hook 改写输出 | 实际执行 | 动作 |",
             "|---|---|---|---|---|---|---|---|"]

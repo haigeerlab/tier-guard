@@ -219,12 +219,12 @@ python3 - "${V2USE}/decisions.jsonl" <<'PY2'
 import json, sys
 rows = [{"ts": "2026-10-05T00:00:00+00:00", "event": "subagent-stop", "routing_version": 2,
          "session_id": "s", "transcript_status": "ok",
-         "actual_execution": {"model": "claude-haiku-4-5", "reasoning_effort": None},
+         "actual_execution": {"model": "claude-haiku-4-5", "reasoning_effort": None}, "usage_basis": "message-id-dedup",
          "usage": {"input_tokens": 100, "cache_creation_input_tokens": 200,
                    "cache_read_input_tokens": 3000, "output_tokens": 40}},
         {"ts": "2026-10-05T00:00:01+00:00", "event": "subagent-stop", "routing_version": 2,
          "session_id": "s", "transcript_status": "ok",
-         "actual_execution": {"model": "claude-haiku-4-5", "reasoning_effort": None},
+         "actual_execution": {"model": "claude-haiku-4-5", "reasoning_effort": None}, "usage_basis": "message-id-dedup",
          "usage": {"input_tokens": 200, "cache_creation_input_tokens": 400,
                    "cache_read_input_tokens": 1000, "output_tokens": 60}},
         {"ts": "2026-10-05T00:00:02+00:00", "event": "subagent-stop", "routing_version": 2,
@@ -265,6 +265,49 @@ check "v2 report：SubagentStop 时 transcript 未落盘，报告回读后仍列
 # 回读只捞模型不捞用量的话，落盘慢的派活会在用量表里整条缺席 —— 而那往往正是跑得久的那些。
 v2_late_usage() { has "${LATEREP}" "| claude-sonnet-5 | 1 | 7 | 70 | 700 | 3 |"; }
 check "v2 report：回读未落盘 transcript 时连 token 用量一并补回" "$(yn v2_late_usage)"
+
+# 恢复运行的子代理会追加同一份 transcript 并再触发 SubagentStop，每条记录存的都是整份文件的累计用量。
+# 用量表按 transcript 路径分组：文件在就回读；文件没了取最晚的带 usage_basis 记录；只剩修复前的旧记录则不可信。
+V2GRP="${TMP}/v2-grp"; mkdir -p "${V2GRP}/sub"
+python3 - "${V2GRP}" <<'PY'
+import json, os, sys
+d = sys.argv[1]
+t1 = os.path.join(d, "sub", "agent-resumed.jsonl")
+with open(t1, "w", encoding="utf-8") as fh:
+    for mid, u in (("m1", (4, 8, 12, 1)), ("m2", (6, 12, 18, 3))):
+        fh.write(json.dumps({"type": "assistant", "message": {"role": "assistant", "id": mid, "model": "claude-sonnet-5",
+            "usage": dict(zip(("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens"), u))}}) + "\n")
+def use(i, w, r, o):
+    return {"input_tokens": i, "cache_creation_input_tokens": w, "cache_read_input_tokens": r, "output_tokens": o}
+def stop(ts, path, execution, usage, basis=True):
+    r = {"ts": ts, "event": "subagent-stop", "routing_version": 2, "session_id": "s", "transcript_status": "ok",
+         "agent_transcript_path": path, "actual_execution": {"model": execution, "reasoning_effort": None}, "usage": usage}
+    if basis:
+        r["usage_basis"] = "message-id-dedup"
+    return r
+gone1, gone2 = os.path.join(d, "sub", "gone-marked.jsonl"), os.path.join(d, "sub", "gone-old.jsonl")
+rows = [stop("2026-10-05T00:00:01+00:00", t1, "claude-stale", use(999, 999, 999, 999)),
+        stop("2026-10-05T00:00:02+00:00", t1, "claude-stale", use(888, 888, 888, 888)),
+        # 较晚的 ts 排在文件前面：取「最晚」必须按 ts，而不是按行序
+        stop("2026-10-05T00:00:09+00:00", gone1, "claude-haiku-4-5", use(2000, 400, 3000, 50)),
+        stop("2026-10-05T00:00:03+00:00", gone1, "claude-haiku-4-5", use(1000, 100, 100, 5)),
+        stop("2026-10-05T00:00:04+00:00", gone2, "claude-opus-old", use(777, 777, 777, 777), basis=False)]
+with open(os.path.join(d, "decisions.jsonl"), "w", encoding="utf-8") as fh:
+    for r in rows:
+        fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+PY
+hookv2 "${V2GRP}" audit agent "$(agentv2 u-grp)" >/dev/null
+GRPREP="$(env -u TIER_GUARD_MODE HOME="${FAKEHOME}" python3 "${ROOT}/hooks/tier_report.py" --data "${V2GRP}")"
+v2_grp_file() { has "${GRPREP}" "| claude-sonnet-5 | 1 | 10 | 20 | 30 | 4 |" && ! has "${GRPREP}" "claude-stale"; }
+check "v2 report：同一 transcript 的两次 stop 只算一个子代理，用量取自回读的文件而非记录里存的值" "$(yn v2_grp_file)"
+v2_grp_latest() { has "${GRPREP}" "| claude-haiku-4-5 | 1 | 2,000 | 400 | 3,000 | 50 |"; }
+check "v2 report：文件没了且有两条带 usage_basis 的记录，取 ts 最晚的那条" "$(yn v2_grp_latest)"
+v2_grp_untrusted() { ! has "${GRPREP}" "claude-opus-old" && has "${GRPREP}" "另有 1 个子代理只有修复前记下的用量（输入与缓存约重复计算一倍），未计入上表。"; }
+check "v2 report：文件没了且只有修复前旧记录的子代理不入表，注脚写 1" "$(yn v2_grp_untrusted)"
+v2_no_note() { ! has "${USEREP}" "未计入上表" && ! has "${LATEREP}" "未计入上表"; }
+check "v2 report：没有不可信子代理时不出注脚" "$(yn v2_no_note)"
+v2_header_unit() { has "${GRPREP}" "| 实际执行模型 | 子代理数 |" && ! has "${GRPREP}" "| 次数 |"; }
+check "v2 report：用量表表头写明计数单位是子代理" "$(yn v2_header_unit)"
 
 # 「建议档 vs 实际执行档」一节原先只认 v1 的 tier 字段，v2 恒显示「已关联 0 / N」，与表格里已入账的实际执行矛盾
 # （2026-09-14 安装版 0.2.0 真实宿主验收发现）。v2 只报已观测次数，档位高低不在报告里推算。

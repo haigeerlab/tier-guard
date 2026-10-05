@@ -473,8 +473,8 @@ M = [
      '''    return meta, prompt, model, (usage if seen_usage else None)''',
      '''    return meta, prompt, model, usage''', "killed"),
     ("report: 回读未落盘 transcript 时只补模型不补用量（长任务在用量表里整条缺席）", TR, TTC,
-     '''            usage = usage if isinstance(usage, dict) else late_usage''',
-     '''            usage = usage''', "killed"),
+     '''                _, _, model, usage = claude_hook.subagent_facts(key)''',
+     '''                _, _, model, _usage = claude_hook.subagent_facts(key)''', "killed"),
     ("stop: 先读 transcript 再建记录（读失败会把整条记录连同 session_id 和路径一起吞掉）", CH, TTG,
      '''    except FileNotFoundError:''',
      '''    except SystemExit:''', "killed"),
@@ -816,6 +816,28 @@ def _requirements''', "killed"),
     ("usage-dedup: usage_basis 从不写", CH, TTG,
      '''rec["usage_basis"] = "message-id-dedup"''',
      '''pass''', "killed"),
+    # ── 用量表按 transcript 路径分组（恢复运行的子代理会重复触发 SubagentStop） ──
+    ("usage-group: 按记录而不是按路径分组", TR, TTC,
+     '''groups.setdefault(path if isinstance(path, str) and path else ("", i), []).append((i, r))''',
+     '''groups.setdefault(("", i), []).append((i, r))''', "killed"),
+    ("usage-group: 忽略 usage_basis（带标记的记录也当不可信）", TR, TTC,
+     '''if r.get("usage_basis") == "message-id-dedup" and isinstance(r.get("usage"), dict)]''',
+     '''if False and isinstance(r.get("usage"), dict)]''', "killed"),
+    ("usage-group: 不可信子代理也进平均", TR, TTC,
+     '''            elif any(isinstance(r.get("usage"), dict) for r in recs):
+                untrusted += 1''',
+     '''            elif any(isinstance(r.get("usage"), dict) for r in recs):
+                untrusted += 1
+                usage = next(r["usage"] for r in recs if isinstance(r.get("usage"), dict))
+                execution = latest_exec''', "killed"),
+    ("usage-group: 取最早而不是最晚的带标记记录", TR, TTC,
+     '''best = max(marked, key=lambda t: t[:2])[2]''',
+     '''best = min(marked, key=lambda t: t[:2])[2]''', "killed"),
+    ("usage-group: 注脚恒显示", TR, TTC,
+     '''    if untrusted:
+        out.append(f"另有''',
+     '''    if True:
+        out.append(f"另有''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")
