@@ -178,23 +178,83 @@ def _text_signals(task, cfg):
 
 
 def _optional_context(request):
-    """验证可选 agent-skills 信封；无效输入只降级为不可用，绝不使核心失败。"""
+    """验证可选 agent-skills 信封；无效输入只降级为不可用，绝不使核心失败。
+
+    返回 (signals, status, tier)。v1 信封字段严格为 {source, schema_version, signals}；v2 在其上
+    只多允许一个可选 `tier`（L1/L2/L3）。tier 非法则整个信封按 unavailable 处理。"""
     raw = request.get("optional_context")
     if raw is None:
-        return {}, {"status": "absent"}
+        return {}, {"status": "absent"}, None
     if not isinstance(raw, dict):
-        return {}, {"status": "unavailable", "reason": "envelope-not-object"}
-    if set(raw) != {"source", "schema_version", "signals"}:
-        return {}, {"status": "unavailable", "reason": "envelope-fields"}
-    if raw.get("source") != "agent-skills" or raw.get("schema_version") != 1:
-        return {}, {"status": "unavailable", "reason": "source-or-version"}
+        return {}, {"status": "unavailable", "reason": "envelope-not-object"}, None
+    version = raw.get("schema_version")
+    base_fields = {"source", "schema_version", "signals"}
+    allowed_fields = base_fields | {"tier"} if version == 2 else base_fields
+    if not base_fields.issubset(raw) or not set(raw).issubset(allowed_fields):
+        return {}, {"status": "unavailable", "reason": "envelope-fields"}, None
+    if raw.get("source") != "agent-skills" or version not in (1, 2):
+        return {}, {"status": "unavailable", "reason": "source-or-version"}, None
     signals = raw.get("signals")
     if not isinstance(signals, dict) or set(signals) != set(_SIGNALS):
-        return {}, {"status": "unavailable", "reason": "signals-fields"}
+        return {}, {"status": "unavailable", "reason": "signals-fields"}, None
     for name, allowed in _SIGNALS.items():
         if signals.get(name) not in allowed:
-            return {}, {"status": "unavailable", "reason": "signals-values"}
-    return dict(signals), {"status": "accepted", "source": "agent-skills", "schema_version": 1}
+            return {}, {"status": "unavailable", "reason": "signals-values"}, None
+    tier = raw.get("tier")
+    if "tier" in raw and tier not in UPSTREAM_TIERS:
+        return {}, {"status": "unavailable", "reason": "tier-value"}, None
+    return dict(signals), {"status": "accepted", "source": "agent-skills", "schema_version": version}, tier
+
+
+# 上游档位词汇 → 已有能力标签（spec「上游档位信号」）；与 _requirements 的三条出口一一对应。
+UPSTREAM_TIERS = ("L1", "L2", "L3")
+TIER_REQUIREMENTS = {
+    "L1": ["mechanical", "read_only"],
+    "L2": ["implementation", "bounded_change"],
+    "L3": ["tradeoff", "cross_cutting"],
+}
+TIER_MARKER_PREFIX = "<!-- tier-guard:"
+_TIER_MARKER_BODY_RE = re.compile(r"tier=(\S*)(?:\s+failures=(\S*))?(?:\s+reason=(.*))?")
+
+
+def parse_tier_marker(task):
+    """解析任务文本里的上游档位标记。任何不满足都降级为 unavailable，绝不抛异常、绝不返回 reason 原文。"""
+    count = task.count(TIER_MARKER_PREFIX)
+    if count == 0:
+        return {"status": "absent"}
+    if count >= 2:
+        return {"status": "unavailable", "error": "multiple-markers"}
+    line = next(ln for ln in task.splitlines() if TIER_MARKER_PREFIX in ln).strip()
+    if not (line.startswith(TIER_MARKER_PREFIX) and line.endswith("-->")):
+        return {"status": "unavailable", "error": "not-own-line"}
+    inner = line[len(TIER_MARKER_PREFIX):-3].strip()
+    match = _TIER_MARKER_BODY_RE.fullmatch(inner)
+    if "-->" in inner or match is None:
+        return {"status": "unavailable", "error": "bad-syntax"}
+    tier, failures, reason = match.groups()
+    if tier not in UPSTREAM_TIERS:
+        return {"status": "unavailable", "error": "bad-tier"}
+    if failures is not None and re.fullmatch(r"[0-9]+", failures) is None:
+        return {"status": "unavailable", "error": "bad-failures"}
+    reason = reason.strip() if reason is not None else ""
+    result = {"status": "accepted", "source": "marker", "tier": tier, "reason_present": bool(reason)}
+    if failures is not None:
+        result["failures"] = int(failures)
+    if reason:
+        result["reason_sha256"] = hashlib.sha256(reason.encode("utf-8")).hexdigest()
+    return result
+
+
+def _upstream_tier(task, envelope_tier):
+    """合并标记与信封里的 tier：两者都给且不一致 → unavailable；标记非法 → 整体 unavailable（保守）。"""
+    marker = parse_tier_marker(task)
+    if marker["status"] == "unavailable" or envelope_tier is None:
+        return marker
+    if marker["status"] == "absent":
+        return {"status": "accepted", "source": "envelope", "tier": envelope_tier, "reason_present": False}
+    if marker["tier"] != envelope_tier:
+        return {"status": "unavailable", "error": "tier-sources-disagree"}
+    return dict(marker, source="marker+envelope")
 
 
 def _route_signals(request, cfg, task, context_signals=None):
@@ -265,14 +325,24 @@ def _route(request, cfg):
         raise ValueError("RouteRequest.host 必须是非空字符串")
     if not isinstance(requested, dict) or not isinstance(requested.get("pinned", False), bool):
         raise ValueError("RouteRequest.requested.pinned 必须是布尔值")
-    context_signals, context_status = _optional_context(request)
+    context_signals, context_status, envelope_tier = _optional_context(request)
+    upstream = _upstream_tier(task, envelope_tier)
     signals = _route_signals(request, cfg, task, context_signals)
     required, confidence = _requirements(signals)
+    tier_source = "inferred"
+    # 临时安全规则（Task 17 以 pin > floor > tier > inferred 的 floor 优先级取代）：
+    # 上游档位只能把需求抬到推断之上；相等或更低一律沿用推断。
+    if upstream["status"] == "accepted":
+        inferred_rank = next(i for i, t in enumerate(UPSTREAM_TIERS) if TIER_REQUIREMENTS[t] == required)
+        if UPSTREAM_TIERS.index(upstream["tier"]) > inferred_rank:
+            required = list(TIER_REQUIREMENTS[upstream["tier"]])
+            tier_source = "upstream"
     candidates = catalog_candidates(cfg, host)
     eligible = [c for c in candidates if set(required).issubset(c["capabilities"])]
     base = {"profile": cfg["mode"], "host": host, "requirements": required,
             "confidence": confidence, "signals": signals, "requested": requested,
-            "optional_context": context_status, "semantic_provider": {"status": "disabled"}}
+            "optional_context": context_status, "semantic_provider": {"status": "disabled"},
+            "upstream_tier": upstream, "tier_source": tier_source}
     if not eligible:
         return dict(base, action="unsupported", target=None, recommended=None,
                     fallback="没有满足需求的自动候选")

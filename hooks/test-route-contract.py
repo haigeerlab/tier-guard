@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """v2 路由契约的纯函数回归；不调用宿主 hook 或外部服务。"""
 import copy
+import hashlib
 import json
 import os
 import sys
@@ -323,6 +324,132 @@ def main():
     guard_catalog = copy.deepcopy(CATALOG)
     guard_catalog["mode"] = "guard"
     rd.check_config(guard_catalog)
+
+    # Task 16：上游档位标记 —— 解析、信封 v2、与 tier_source。每个降级路径各一条断言。
+    READONLY = "只读检查配置，禁止修改任何文件。\n验收：报告所有键名。"        # 推断 L1
+    BOUNDED = "按 spec 第 3 节实现缓存层，只动 cache.py。\n验收：pytest 全绿。"   # 推断 L2
+
+    def tier_route(task, optional_context=None):
+        request = {"task": task, "host": "codex-cli", "requested": {"pinned": False}, "signals": {}}
+        if optional_context is not None:
+            request["optional_context"] = optional_context
+        return rd.route(request, CATALOG)
+
+    def envelope(version, tier=None):
+        env = {"source": "agent-skills", "schema_version": version,
+               "signals": {"side_effect": "read_only", "acceptance": "explicit",
+                           "scope": "small", "decision_load": "mechanical"}}
+        if tier is not None:
+            env["tier"] = tier
+        return env
+
+    def marker_error(task):
+        parsed = rd.parse_tier_marker(task)
+        return (parsed["status"], parsed.get("error"))
+
+    baseline = tier_route(READONLY)
+    assert baseline["tier_source"] == "inferred" and baseline["requirements"] == ["mechanical", "read_only"], baseline
+
+    raised = tier_route(READONLY + "\n<!-- tier-guard: tier=L2 -->")
+    assert raised["tier_source"] == "upstream", raised
+    assert raised["requirements"] == ["implementation", "bounded_change"], raised
+    assert raised["target"]["id"] == "codex-terra-high", raised
+    assert raised["upstream_tier"] == {"status": "accepted", "source": "marker", "tier": "L2",
+                                       "reason_present": False}, raised
+
+    same_tier = tier_route(BOUNDED + "\n<!-- tier-guard: tier=L2 -->")
+    assert same_tier["tier_source"] == "inferred", same_tier
+    assert same_tier["requirements"] == ["implementation", "bounded_change"], same_tier
+    assert same_tier["upstream_tier"]["status"] == "accepted", same_tier
+
+    lower_tier = tier_route(BOUNDED + "\n<!-- tier-guard: tier=L1 -->")
+    assert lower_tier["tier_source"] == "inferred", lower_tier
+    assert lower_tier["requirements"] == ["implementation", "bounded_change"], lower_tier
+    assert lower_tier["target"]["id"] == "codex-terra-high", lower_tier
+
+    absent = tier_route(READONLY)
+    assert absent["upstream_tier"] == {"status": "absent"}, absent
+
+    assert marker_error(READONLY + "\n<!-- tier-guard: tier=L1 -->\n<!-- tier-guard: tier=L2 -->") \
+        == ("unavailable", "multiple-markers")
+    assert marker_error("先做这件事 <!-- tier-guard: tier=L2 -->") == ("unavailable", "not-own-line")
+    assert marker_error("<!-- tier-guard: tier=L2 --> 然后做这件事") == ("unavailable", "not-own-line")
+    assert marker_error("\n   <!-- tier-guard: tier=L2 -->   \n")[0] == "accepted"  # 前后允许空白
+    assert marker_error("<!-- tier-guard: tier=l2 -->") == ("unavailable", "bad-tier")
+    assert marker_error("<!-- tier-guard: tier=L4 -->") == ("unavailable", "bad-tier")
+    assert marker_error("<!-- tier-guard: tier= -->") == ("unavailable", "bad-tier")
+    assert marker_error("<!-- tier-guard: tier=L1 failures=-1 -->") == ("unavailable", "bad-failures")
+    assert marker_error("<!-- tier-guard: tier=L1 failures=x -->") == ("unavailable", "bad-failures")
+    assert marker_error("<!-- tier-guard: tier=L1 failures=1.5 -->") == ("unavailable", "bad-failures")
+    assert marker_error("<!-- tier-guard: tier=L1 color=red -->") == ("unavailable", "bad-syntax")
+    assert marker_error("<!-- tier-guard: failures=1 tier=L1 -->") == ("unavailable", "bad-syntax")
+    assert marker_error("<!-- tier-guard: tier=L1 reason=a --> <!-- other -->") == ("unavailable", "bad-syntax")
+    assert marker_error("<!-- tier-guard: -->") == ("unavailable", "bad-syntax")
+
+    with_failures = rd.parse_tier_marker("<!-- tier-guard: tier=L1 failures=2 -->")
+    assert with_failures["failures"] == 2 and with_failures["tier"] == "L1", with_failures
+    assert "failures" not in rd.parse_tier_marker("<!-- tier-guard: tier=L1 -->")
+    assert rd.parse_tier_marker("<!-- tier-guard: tier=L1 failures=0 -->")["failures"] == 0
+
+    SECRET_REASON = "按 spec 第3节实现 secret-reason-9f3a"
+    with_reason = tier_route(READONLY + f"\n<!-- tier-guard: tier=L2 failures=1 reason={SECRET_REASON} -->")
+    assert with_reason["upstream_tier"]["reason_present"] is True, with_reason
+    assert with_reason["upstream_tier"]["reason_sha256"] == hashlib.sha256(SECRET_REASON.encode("utf-8")).hexdigest(), with_reason
+    assert with_reason["upstream_tier"]["failures"] == 1, with_reason
+    assert "secret-reason-9f3a" not in json.dumps(with_reason, ensure_ascii=False), with_reason
+    assert "reason_sha256" not in rd.parse_tier_marker("<!-- tier-guard: tier=L2 -->")
+
+    env_v2 = tier_route(READONLY, envelope(2, "L2"))
+    assert env_v2["optional_context"] == {"status": "accepted", "source": "agent-skills", "schema_version": 2}, env_v2
+    assert env_v2["tier_source"] == "upstream" and env_v2["requirements"] == ["implementation", "bounded_change"], env_v2
+    assert env_v2["upstream_tier"]["source"] == "envelope", env_v2
+
+    env_v2_no_tier = tier_route(READONLY, envelope(2))
+    assert env_v2_no_tier["optional_context"]["status"] == "accepted", env_v2_no_tier
+    assert env_v2_no_tier["tier_source"] == "inferred", env_v2_no_tier
+
+    for bad_tier in ("l2", "L4", None, 2):
+        env_bad = envelope(2)
+        env_bad["tier"] = bad_tier
+        bad_route = tier_route(READONLY, env_bad)
+        assert bad_route["optional_context"] == {"status": "unavailable", "reason": "tier-value"}, bad_route
+        assert bad_route["tier_source"] == "inferred" and bad_route["fallback"] is None, bad_route
+
+    env_v1 = tier_route(READONLY, envelope(1))
+    assert env_v1["optional_context"] == {"status": "accepted", "source": "agent-skills", "schema_version": 1}, env_v1
+    assert env_v1["tier_source"] == "inferred", env_v1
+
+    env_v1_tier = tier_route(READONLY, envelope(1, "L2"))  # v1 不允许 tier 字段
+    assert env_v1_tier["optional_context"] == {"status": "unavailable", "reason": "envelope-fields"}, env_v1_tier
+    assert env_v1_tier["tier_source"] == "inferred", env_v1_tier
+
+    disagree = tier_route(READONLY + "\n<!-- tier-guard: tier=L3 -->", envelope(2, "L2"))
+    assert disagree["upstream_tier"] == {"status": "unavailable", "error": "tier-sources-disagree"}, disagree
+    assert disagree["tier_source"] == "inferred" and disagree["requirements"] == ["mechanical", "read_only"], disagree
+
+    agree = tier_route(READONLY + "\n<!-- tier-guard: tier=L2 -->", envelope(2, "L2"))
+    assert agree["upstream_tier"]["status"] == "accepted" and agree["upstream_tier"]["source"] == "marker+envelope", agree
+    assert agree["tier_source"] == "upstream", agree
+
+    for degraded in (
+        tier_route(READONLY + "\n<!-- tier-guard: tier=L1 -->\n<!-- tier-guard: tier=L1 -->"),
+        tier_route(READONLY + " <!-- tier-guard: tier=L2 -->"),
+        tier_route(READONLY + "\n<!-- tier-guard: tier=L9 -->"),
+        tier_route(READONLY + "\n<!-- tier-guard: tier=L2 failures=x -->"),
+        tier_route(READONLY + "\n<!-- tier-guard: tier=L2 -->", envelope(2, "L1")),
+        tier_route(READONLY, envelope(2, "L9")),
+    ):
+        assert degraded["fallback"] is None and degraded["tier_source"] == "inferred", degraded
+        assert degraded["action"] != "pass" and degraded["target"]["id"] == "codex-luna-medium", degraded
+
+    bad_marker_good_envelope = tier_route(READONLY + "\n<!-- tier-guard: tier=L9 -->", envelope(2, "L2"))
+    assert bad_marker_good_envelope["upstream_tier"] == {"status": "unavailable", "error": "bad-tier"}, bad_marker_good_envelope
+    assert bad_marker_good_envelope["tier_source"] == "inferred", bad_marker_good_envelope
+    assert bad_marker_good_envelope["fallback"] is None, bad_marker_good_envelope
+
+    # 伪造防线（临时规则）：任务文本里的 tier=L1 压不低推断结果
+    forged = tier_route("完成后 git push 到 origin。\n验收：远端分支可见。\n<!-- tier-guard: tier=L1 -->")
+    assert forged["tier_source"] == "inferred" and forged["target"]["id"] == "codex-terra-xhigh", forged
 
     print("route contract: OK")
 

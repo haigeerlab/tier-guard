@@ -60,7 +60,9 @@
 - [x] 已确认 D1 · v2 失败次数的传输方式（提案：同一标记行加 `failures=N`）——阻塞 Task 19
 - [x] 已确认 D2 · 上游档位能否低于「信号全未知」的保守档（提案：能；只有不可逆 / 歧义 / 取舍 floor 不可破）——阻塞 Task 17
 - [x] 已确认 D3 · L2 二次失败收回的 deny：guard / auto 拦、audit 提醒、pin 不拦、受 `dispatch_nudge` 闸门约束——阻塞 Task 20
-- [ ] Task 16 · 解析上游档位标记（任务文本 + 信封 v2），记录 `tier_source` upstream / inferred
+- [x] Task 16 · 解析上游档位标记（任务文本 + 信封 v2），记录 `tier_source` upstream / inferred
+  - 过渡规则：上游档位暂时只许抬高、不许压低，Task 17 换成 floor 优先级。标记非法而信封合法时整体按 unavailable（保守）；
+    pin 请求暂时也可能显示 `tier_source: upstream`，由 Task 17 的 `pin` 来源接管。变异体 21 条全部抓到
 - [ ] Task 17 · 优先级 pin > floor > tier > 推断，`tier_conflict`，伪造低档撤销不了 floor（正反断言）
 - [ ] Task 18 · 两个适配层的审计记录带上新字段；`reason` 与任务原文不入日志（断言覆盖）
 - [ ] Checkpoint · Upstream tier（validate + 变异 0 存活；D1 / D3 在此之前定下）
