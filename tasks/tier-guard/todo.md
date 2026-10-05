@@ -66,8 +66,9 @@
 - [x] Task 17 · 优先级 pin > floor > tier > 推断，`tier_conflict`，伪造低档撤销不了 floor（正反断言）
   - floor = 危险信号命中且推断落在 L3。只读 + 小范围 + 机械的任务即便显式标「验收缺失」也仍走 L1（沿用既有只读豁免）：
     若算作 floor，带 `tier=L1` 反而会被抬到 L3，比不带标记还贵。该边角有断言和变异体守着，未改既有路由
-- [ ] Task 18 · 两个适配层的审计记录带上新字段；`reason` 与任务原文不入日志（断言覆盖）
-- [ ] Checkpoint · Upstream tier（validate + 变异 0 存活；D1 / D3 在此之前定下）
+- [x] Task 18 · 两个适配层的审计记录带上新字段；`reason` 与任务原文不入日志（断言覆盖）
+  - 两个适配层原样记录决策、不做过滤；未发现任何现有路径把任务原文或 reason 写进日志
+- [x] Checkpoint · Upstream tier（validate + 变异 206 / 0 / 0；D1–D3 已定；2026-10-05 用户批准进入 Task 19）
 - [ ] Task 19 · 按失败次数升档：L1 失败 → L2，只升不降、不低于 floor，记录 `escalation`
 - [ ] Task 20 · L2 二次失败收回主会话（新 deny 路径，D3 已批准）
 - [ ] Task 21 · tier-routing skill、README、CHANGELOG、spec 同步（含 Codex hook 读不到标记的限制）

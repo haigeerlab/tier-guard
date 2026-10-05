@@ -450,6 +450,56 @@ PY
 }
 check "nudge：并发抢标记 → 同一会话 3 次只有 1 次 deny，其余 2 次只提醒" "$(nudge_race)"
 
+# ── Task 18：上游档位字段进审计日志，且日志不漏 reason / 任务原文 / 不透明令牌 ──
+# 可见文本用例沿用本套件的 sp（message 为明文）造；真实宿主多数时候给的是不透明令牌，所以另有一条令牌用例。
+TG18LOG="${TMP}/tg18-log"; rm -rf "${TG18LOG}"
+TG18_REASON="TG18-REASON-SENTINEL-7f3a"; TG18_TASK="TG18-TASK-SENTINEL-c91e"
+run18() {  # $1=profile $2=payload → OUT / RC（日志写进 TG18LOG）
+  OUT="$(printf '%s' "$2" | env HOME="${FAKEHOME}" TIER_GUARD_LOG_DIR="${TG18LOG}" TIER_GUARD_MODE="$1" \
+        TIER_GUARD_CONFIG="${ROOT}/config/routing.catalog.v2.json" /bin/bash "${HOOK}")"
+  RC=$?
+}
+rec18() {  # $1=下标（-3 / -2 / -1）$2=python 表达式（r = 该条日志）
+  python3 - "$1" "$2" "${TG18LOG}/decisions.jsonl" <<'PY'
+import json, sys
+try:
+    r = json.loads(open(sys.argv[3], encoding="utf-8").read().splitlines()[int(sys.argv[1])])
+    print("yes" if eval(sys.argv[2]) else "no")
+except Exception:
+    print("no")
+PY
+}
+logdir_free_of() {  # 整个日志目录的每个文件都读一遍；目录或日志为空也算失败（防空断言）
+  python3 - "${TG18LOG}" "$@" <<'PY'
+import os, sys
+root, needles = sys.argv[1], sys.argv[2:]
+seen = 0
+for dirpath, _, names in os.walk(root):
+    for name in names:
+        with open(os.path.join(dirpath, name), encoding="utf-8", errors="replace") as fh:
+            body = fh.read()
+        seen += len(body)
+        if any(n in body for n in needles):
+            print("no"); sys.exit(0)
+print("yes" if seen > 0 and os.path.exists(os.path.join(root, "decisions.jsonl")) else "no")
+PY
+}
+run18 guard "$(sp "${TG18_TASK} 只读审查配置，禁止修改任何文件。"$'\n验收：报告所有键名。\n'"<!-- tier-guard: tier=L2 reason=${TG18_REASON} -->" - -)"
+check "tier18：合法标记 → 记录里 tier_source=upstream，upstream_tier 已接受且 reason_present=true" \
+  "$(rec18 -1 'r["task_visibility"] == "visible" and r["decision"]["tier_source"] == "upstream" and r["decision"]["upstream_tier"]["status"] == "accepted" and r["decision"]["upstream_tier"]["tier"] == "L2" and r["decision"]["upstream_tier"]["reason_present"] is True')"
+check "tier18：合法标记 → 记录里只有 reason 的 sha256，且没有 tier_conflict 键" \
+  "$(rec18 -1 'len(r["decision"]["upstream_tier"]["reason_sha256"]) == 64 and "tier_conflict" not in r["decision"]')"
+run18 guard "$(sp "${TG18_TASK} 完成后 git push 到 origin。"$'\n验收：远端分支可见。\n'"<!-- tier-guard: tier=L1 reason=${TG18_REASON} -->" - -)"
+check "tier18：伪造 tier=L1 的不可逆任务 → 记录 tier_conflict={upstream:L1,floor:L3}" \
+  "$(rec18 -1 'r["decision"]["tier_conflict"] == {"upstream": "L1", "floor": "L3"}')"
+check "tier18：伪造 tier=L1 的不可逆任务 → 记录 tier_source=floor，目标是 sol/xhigh" \
+  "$(rec18 -1 'r["decision"]["tier_source"] == "floor" and r["decision"]["target"]["id"] == "codex-sol-xhigh"')"
+run18 guard "$(sp "${OPAQUE_TASK_TOKEN}" - -)"
+check "tier18：不透明令牌 → 不采纳任何 tier（upstream_tier=absent），tier_source=inferred，无冲突" \
+  "$(rec18 -1 'r["task_visibility"] == "opaque_token" and r["decision"]["upstream_tier"] == {"status": "absent"} and r["decision"]["tier_source"] == "inferred" and "tier_conflict" not in r["decision"]')"
+check "tier18：日志目录里找不到 reason 原文、任务原文和不透明令牌" \
+  "$(logdir_free_of "${TG18_REASON}" "${TG18_TASK}" "${OPAQUE_TASK_TOKEN}")"
+
 MS="$(python3 - "${HOOK}" "$(sp "${IRR}" gpt-5.6-terra high)" "${FAKEHOME}" "${LOGD}" <<'PY'
 import os, subprocess, sys, time
 hook, payload, home, logd = sys.argv[1:5]
