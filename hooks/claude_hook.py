@@ -287,8 +287,18 @@ def _first_text(content):
     return None
 
 
+USAGE_FIELDS = ("input_tokens", "cache_creation_input_tokens",
+                "cache_read_input_tokens", "output_tokens")
+
+
 def subagent_facts(transcript_path):
-    """→ (meta, 首条 prompt, 实际模型)。实际模型取第一条带 model 的 assistant 消息 —— 同一子代理内不变，读到就停。"""
+    """→ (meta, 首条 prompt, 实际模型, token 用量)。
+
+    实际模型取第一条带 model 的 assistant 消息 —— 同一子代理内不变。
+    用量必须跨全部 assistant 消息累加，所以这里读完整个文件，不能读到模型就停。
+    实测代价（2026-10-05，本机最大的 8 份 transcript，2.5MB / 1200 行级别）：读完 6.5–15.6ms，
+    只读到首条 1.1–1.9ms；薄壳整体预算是中位 100ms、实测 32–50ms，这点开销吃得下。
+    """
     meta = {}
     if transcript_path.endswith(".jsonl"):
         mp = transcript_path[:-len(".jsonl")] + ".meta.json"
@@ -296,6 +306,8 @@ def subagent_facts(transcript_path):
             with open(mp, encoding="utf-8") as fh:
                 meta = json.load(fh)
     prompt = model = None
+    usage = dict.fromkeys(USAGE_FIELDS, 0)
+    seen_usage = False
     with open(transcript_path, encoding="utf-8") as fh:
         for line in fh:
             try:
@@ -304,17 +316,24 @@ def subagent_facts(transcript_path):
                 continue
             if prompt is None and msg.get("role") == "user":
                 prompt = _first_text(msg.get("content"))
-            if msg.get("role") == "assistant" and msg.get("model"):
+            if model is None and msg.get("role") == "assistant" and msg.get("model"):
                 model = msg["model"]
-                break
-    return meta, prompt, model
+            u = msg.get("usage")
+            if isinstance(u, dict):
+                seen_usage = True
+                for field in USAGE_FIELDS:
+                    value = u.get(field)
+                    if isinstance(value, int) and not isinstance(value, bool):
+                        usage[field] += value
+    # 宿主一条用量都没给时记未知，而不是一串 0 —— 0 会被读成「真的没花 token」。
+    return meta, prompt, model, (usage if seen_usage else None)
 
 
 def on_subagent_stop(payload, cfg, mode):
     path = payload.get("agent_transcript_path")
     if not isinstance(path, str) or not path:
         raise ValueError("SubagentStop payload 缺 agent_transcript_path")
-    meta, prompt, model = subagent_facts(path)
+    meta, prompt, model, _usage = subagent_facts(path)   # v1 冻结层：不记 usage，只跟上新签名
     rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
            "event": "subagent-stop", "session_id": payload.get("session_id"),
            "tool_use_id": meta.get("toolUseId"), "agent_type": meta.get("agentType"),
@@ -339,9 +358,10 @@ def on_subagent_stop_v2(payload):
            "event": "subagent-stop", "routing_version": 2, "session_id": payload.get("session_id"),
            "tool_use_id": None, "agent_type": None, "actual_execution": None,
            # 实测：触发时子代理唯一的 assistant 行可能还没落盘；留路径给报告回读，不留内容
-           "agent_transcript_path": path, "prompt_sha256": None, "transcript_status": "ok"}
+           "agent_transcript_path": path, "prompt_sha256": None, "transcript_status": "ok",
+           "usage": None}
     try:
-        meta, prompt, model = subagent_facts(path)
+        meta, prompt, model, usage = subagent_facts(path)
     except FileNotFoundError:
         # 宿主对某些子代理种类不写 transcript（实测：文件事后全盘也搜不到，不是落盘时序）。
         # 这是正常的宿主状况，不是守卫异常 —— 不占用 fallback 这个诊断位，否则真正的异常会被淹没。
@@ -351,6 +371,7 @@ def on_subagent_stop_v2(payload):
     rec["agent_type"] = meta.get("agentType")
     rec["actual_execution"] = {"model": model, "reasoning_effort": None} if model else None
     rec["prompt_sha256"] = hashlib.sha256(prompt.encode("utf-8")).hexdigest() if prompt else None
+    rec["usage"] = usage
     return rec, None
 
 

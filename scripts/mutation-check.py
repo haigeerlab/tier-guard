@@ -463,6 +463,18 @@ M = [
     ("pin: env 的 inherit / default 也当成 pin（会把「没设」误判为已 pin，整类任务不再路由）", CH, TTG,
      '''        if value and value.lower() not in _MODEL_NOT_A_CHOICE:''',
      '''        if value:''', "killed"),
+    ("usage: 读到模型就停（用量只剩第一条 assistant，跨消息的累加全丢）", CH, TTG,
+     '''            if model is None and msg.get("role") == "assistant" and msg.get("model"):
+                model = msg["model"]''',
+     '''            if model is None and msg.get("role") == "assistant" and msg.get("model"):
+                model = msg["model"]
+                break''', "killed"),
+    ("usage: 宿主没给用量时记一串 0（会被读成「真的没花 token」）", CH, TTG,
+     '''    return meta, prompt, model, (usage if seen_usage else None)''',
+     '''    return meta, prompt, model, usage''', "killed"),
+    ("report: 回读未落盘 transcript 时只补模型不补用量（长任务在用量表里整条缺席）", TR, TTC,
+     '''            usage = usage if isinstance(usage, dict) else late_usage''',
+     '''            usage = usage''', "killed"),
     ("stop: 先读 transcript 再建记录（读失败会把整条记录连同 session_id 和路径一起吞掉）", CH, TTG,
      '''    except FileNotFoundError:''',
      '''    except SystemExit:''', "killed"),

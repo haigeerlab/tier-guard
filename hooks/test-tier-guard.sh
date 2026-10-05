@@ -344,8 +344,15 @@ import json, sys
 f, tid, model = sys.argv[1:4]
 with open(f, "w", encoding="utf-8") as fh:
     fh.write(json.dumps({"type": "user", "message": {"role": "user", "content": "子任务原文 SECRET_PROMPT_TEXT"}}, ensure_ascii=False) + "\n")
+    # 两条 assistant：模型取第一条（同一子代理内不变），usage 必须累加而不是只取第一条
     fh.write(json.dumps({"type": "assistant", "message": {"role": "assistant", "model": model,
-        "content": [{"type": "text", "text": "ok"}]}}) + "\n")
+        "content": [{"type": "text", "text": "ok"}],
+        "usage": {"input_tokens": 10, "cache_creation_input_tokens": 100,
+                  "cache_read_input_tokens": 1000, "output_tokens": 5}}}) + "\n")
+    fh.write(json.dumps({"type": "assistant", "message": {"role": "assistant", "model": model,
+        "content": [{"type": "text", "text": "ok2"}],
+        "usage": {"input_tokens": 1, "cache_creation_input_tokens": 20,
+                  "cache_read_input_tokens": 300, "output_tokens": 7}}}) + "\n")
 json.dump({"agentType": "general-purpose", "toolUseId": tid}, open(f[:-len(".jsonl")] + ".meta.json", "w", encoding="utf-8"))
 PY
 }
@@ -372,6 +379,29 @@ check "v2 SubagentStop：transcript 不存在 → 实际执行记为未知，不
 runv2 audit "$(stopp "${TMP}/sub/agent-a.jsonl")" subagent-stop
 check "v2 SubagentStop：读到 transcript 时标记为 ok（与 missing 可区分）" \
   "$(lastlog 'r["transcript_status"] == "ok" and r["actual_execution"]["model"] == "claude-haiku-4-5"')"
+# 宿主在 transcript 里给了 usage，tier-guard 之前没取。记原始 token 数、不记成本：
+# 价格会变且按账号不同，把价格表写进仓库就是一个会过期却被当成事实的东西。
+check "v2 SubagentStop：记录宿主给出的 token 用量（跨多条 assistant 累加）" \
+  "$(lastlog 'r["usage"] == {"input_tokens": 11, "cache_creation_input_tokens": 120, "cache_read_input_tokens": 1300, "output_tokens": 12}')"
+check "v2 SubagentStop：usage 与 actual_execution 并列，不改后者的形状" \
+  "$(lastlog 'set(r["actual_execution"]) == {"model", "reasoning_effort"}')"
+runv2 audit "$(stopp "${TMP}/sub/missing.jsonl")" subagent-stop
+check "v2 SubagentStop：读不到 transcript 时 usage 记为未知，不伪造 0" \
+  "$(lastlog 'r["transcript_status"] == "missing" and r["usage"] is None')"
+# 另一条路径：transcript 读得到，但宿主一条 usage 都没给。同样记未知 ——
+# 一串 0 会被读成「真的没花 token」，比缺字段更有害。
+python3 - "${TMP}/sub/nousage.jsonl" <<'PY2'
+import json, sys
+f = sys.argv[1]
+with open(f, "w", encoding="utf-8") as fh:
+    fh.write(json.dumps({"type": "user", "message": {"role": "user", "content": "x"}}) + "\n")
+    fh.write(json.dumps({"type": "assistant", "message": {"role": "assistant",
+        "model": "claude-haiku-4-5", "content": []}}) + "\n")
+json.dump({"toolUseId": "u-nousage"}, open(f[:-len(".jsonl")] + ".meta.json", "w", encoding="utf-8"))
+PY2
+runv2 audit "$(stopp "${TMP}/sub/nousage.jsonl")" subagent-stop
+check "v2 SubagentStop：transcript 有但宿主没给用量 → usage 记未知，不是一串 0" \
+  "$(lastlog 'r["transcript_status"] == "ok" and r["actual_execution"]["model"] == "claude-haiku-4-5" and r["usage"] is None')"
 # env=off 会被薄壳快速路径拦下，这里走状态文件，才真正测到 python 这一侧
 OFFD="${TMP}/v2-off"; mkdir -p "${OFFD}"; printf 'off\n' > "${OFFD}/mode"
 printf '%s' "$(stopp "${TMP}/sub/agent-a.jsonl")" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" TIER_GUARD_LOG_DIR="${OFFD}" \

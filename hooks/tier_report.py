@@ -85,16 +85,23 @@ def _host_apply(value):
     return "未知"
 
 
-def _late_actual(stop):
-    """SubagentStop 触发时子代理唯一的 assistant 行可能还没落盘（2026-09-13 真实宿主实测）；报告时回读同一 transcript。"""
+def _late_read(stop):
+    """SubagentStop 触发时子代理唯一的 assistant 行可能还没落盘（2026-09-13 真实宿主实测）；报告时回读同一 transcript。
+
+    → (实际执行, token 用量)。用量一并回读：漏掉这一路会让落盘慢的派活在用量表里整条缺席，
+    而那往往正是跑得久、最值得看的那些。"""
     path = stop.get("agent_transcript_path")
     if not isinstance(path, str) or not path:
-        return None
+        return None, None
     try:
-        _, _, model = claude_hook.subagent_facts(path)
+        _, _, model, usage = claude_hook.subagent_facts(path)
     except (OSError, ValueError):
-        return None
-    return {"model": model, "reasoning_effort": None} if model else None
+        return None, None
+    return ({"model": model, "reasoning_effort": None} if model else None), usage
+
+
+def _late_actual(stop):
+    return _late_read(stop)[0]
 
 
 def _v2_stops(recs):
@@ -133,6 +140,36 @@ def _v2_audit(out, recs, recent):
         share = no_transcript / len(all_stops) * 100
         out.append(f"SubagentStop {len(all_stops)} 次，其中宿主未写 transcript {no_transcript} 次（{share:.1f}%）；"
                    "这部分的实际执行无从观测，与守卫异常无关。")
+    # 只报 token，不报成本：价格随模型和账号变动，把价格表写进插件等于埋一个会过期的「事实」。
+    # 每任务 token 是宿主给出的硬事实，换算成钱由看报告的人按当时价格自己做。
+    used = []
+    for r in all_stops:
+        execution, usage = r.get("actual_execution"), r.get("usage")
+        if not (isinstance(execution, dict) and isinstance(usage, dict)):
+            late_execution, late_usage = _late_read(r)
+            execution = execution if isinstance(execution, dict) else late_execution
+            usage = usage if isinstance(usage, dict) else late_usage
+        if isinstance(execution, dict) and isinstance(usage, dict):
+            used.append((execution, usage))
+    if used:
+        by_model = {}
+        for execution, usage in used:
+            m = execution.get("model") or "（未知）"
+            acc = by_model.setdefault(m, {"n": 0, **dict.fromkeys(
+                ("input_tokens", "cache_creation_input_tokens",
+                 "cache_read_input_tokens", "output_tokens"), 0)})
+            acc["n"] += 1
+            for k, v in usage.items():
+                if k in acc and isinstance(v, int):
+                    acc[k] += v
+        out += ["", "| 实际执行模型 | 次数 | 平均输入 | 平均缓存写 | 平均缓存读 | 平均输出 |",
+                "|---|---|---|---|---|---|"]
+        for m, a in sorted(by_model.items(), key=lambda kv: -kv[1]["n"]):
+            n = a["n"]
+            out.append(f"| {m} | {n} | {a['input_tokens']//n:,} | {a['cache_creation_input_tokens']//n:,} "
+                       f"| {a['cache_read_input_tokens']//n:,} | {a['output_tokens']//n:,} |")
+        out.append("")
+        out.append("只统计宿主回报了用量的派活；不换算成本（价格随模型与账号变动，不写进插件）。")
     stops = _v2_stops(recs)
     out +=["", "| 时间 | 宿主 | 宿主可改写 | 请求 | 选择 / 建议 | hook 改写输出 | 实际执行 | 动作 |",
             "|---|---|---|---|---|---|---|---|"]

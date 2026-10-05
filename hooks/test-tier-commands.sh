@@ -213,6 +213,32 @@ v2_notr() { has "${NOTRREP}" "宿主未写 transcript 2 次"; }
 check "v2 report：宿主未写 transcript 单列，新旧两种口径都算" "$(yn v2_notr)"
 v2_notr_not_fault() { has "${NOTRREP}" "与守卫异常无关"; }
 check "v2 report：明说它与守卫异常无关，不占 fallback 的诊断位" "$(yn v2_notr_not_fault)"
+# token 用量：只报 token、不报成本。价格随模型和账号变动，写进插件就是埋一个会过期的事实。
+V2USE="${TMP}/v2-usage"; mkdir -p "${V2USE}"
+python3 - "${V2USE}/decisions.jsonl" <<'PY2'
+import json, sys
+rows = [{"ts": "2026-10-05T00:00:00+00:00", "event": "subagent-stop", "routing_version": 2,
+         "session_id": "s", "transcript_status": "ok",
+         "actual_execution": {"model": "claude-haiku-4-5", "reasoning_effort": None},
+         "usage": {"input_tokens": 100, "cache_creation_input_tokens": 200,
+                   "cache_read_input_tokens": 3000, "output_tokens": 40}},
+        {"ts": "2026-10-05T00:00:01+00:00", "event": "subagent-stop", "routing_version": 2,
+         "session_id": "s", "transcript_status": "ok",
+         "actual_execution": {"model": "claude-haiku-4-5", "reasoning_effort": None},
+         "usage": {"input_tokens": 200, "cache_creation_input_tokens": 400,
+                   "cache_read_input_tokens": 1000, "output_tokens": 60}},
+        {"ts": "2026-10-05T00:00:02+00:00", "event": "subagent-stop", "routing_version": 2,
+         "session_id": "s", "transcript_status": "missing", "actual_execution": None, "usage": None}]
+with open(sys.argv[1], "w", encoding="utf-8") as fh:
+    for r in rows:
+        fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+PY2
+hookv2 "${V2USE}" audit agent "$(agentv2 u-use)" >/dev/null
+USEREP="$(env -u TIER_GUARD_MODE HOME="${FAKEHOME}" python3 "${ROOT}/hooks/tier_report.py" --data "${V2USE}")"
+v2_use_avg() { has "${USEREP}" "| claude-haiku-4-5 | 2 | 150 | 300 | 2,000 | 50 |"; }
+check "v2 report：按实际执行模型列出平均 token（只算有用量的那些）" "$(yn v2_use_avg)"
+v2_use_nocost() { has "${USEREP}" "不换算成本"; }
+check "v2 report：明说不换算成本（价格不写进插件）" "$(yn v2_use_nocost)"
 
 # 真实宿主实测：SubagentStop 触发时，子代理唯一的 assistant 行可能还没落盘。报告须回读 transcript 补齐。
 V2LATE="${TMP}/v2-late"
@@ -229,11 +255,16 @@ hookv2 "${V2LATE}" audit subagent-stop "$(python3 -c 'import json,sys; print(jso
 python3 - "${LATETR}" <<'PY'
 import json, sys
 with open(sys.argv[1], "a", encoding="utf-8") as fh:
-    fh.write(json.dumps({"type": "assistant", "message": {"role": "assistant", "model": "claude-sonnet-5", "content": []}}) + "\n")
+    fh.write(json.dumps({"type": "assistant", "message": {"role": "assistant", "model": "claude-sonnet-5", "content": [],
+        "usage": {"input_tokens": 7, "cache_creation_input_tokens": 70,
+                  "cache_read_input_tokens": 700, "output_tokens": 3}}}) + "\n")
 PY
 LATEREP="$(env -u TIER_GUARD_MODE HOME="${FAKEHOME}" python3 "${ROOT}/hooks/tier_report.py" --data "${V2LATE}")"
 v2_late() { has "${LATEREP}" "| claude-sonnet-5 |" && ! has "${LATEREP}" "| 未观测 |"; }
 check "v2 report：SubagentStop 时 transcript 未落盘，报告回读后仍列出实际模型" "$(yn v2_late)"
+# 回读只捞模型不捞用量的话，落盘慢的派活会在用量表里整条缺席 —— 而那往往正是跑得久的那些。
+v2_late_usage() { has "${LATEREP}" "| claude-sonnet-5 | 1 | 7 | 70 | 700 | 3 |"; }
+check "v2 report：回读未落盘 transcript 时连 token 用量一并补回" "$(yn v2_late_usage)"
 
 # 「建议档 vs 实际执行档」一节原先只认 v1 的 tier 字段，v2 恒显示「已关联 0 / N」，与表格里已入账的实际执行矛盾
 # （2026-09-14 安装版 0.2.0 真实宿主验收发现）。v2 只报已观测次数，档位高低不在报告里推算。
