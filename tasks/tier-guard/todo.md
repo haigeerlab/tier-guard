@@ -53,6 +53,23 @@
     证据：[`dispatch nudge e2e`](../../docs/research/2026-09-13-dispatch-nudge-e2e.md)
   - [x] 开闸门决定：2026-09-13 用户确认只开 `claude-code.dispatch_nudge`；Codex 取舍类未达标且问题在主代理自身选档，保持关闭
 
+## Phase 7 · 上游档位、升档与档位日志（2026-10-05 拆分，用户已批准）
+
+> 详见 plan「Phase 7」。D1–D3 已于 2026-10-05 按提案确认并写入 spec。
+
+- [x] 已确认 D1 · v2 失败次数的传输方式（提案：同一标记行加 `failures=N`）——阻塞 Task 19
+- [x] 已确认 D2 · 上游档位能否低于「信号全未知」的保守档（提案：能；只有不可逆 / 歧义 / 取舍 floor 不可破）——阻塞 Task 17
+- [x] 已确认 D3 · L2 二次失败收回的 deny：guard / auto 拦、audit 提醒、pin 不拦、受 `dispatch_nudge` 闸门约束——阻塞 Task 20
+- [ ] Task 16 · 解析上游档位标记（任务文本 + 信封 v2），记录 `tier_source` upstream / inferred
+- [ ] Task 17 · 优先级 pin > floor > tier > 推断，`tier_conflict`，伪造低档撤销不了 floor（正反断言）
+- [ ] Task 18 · 两个适配层的审计记录带上新字段；`reason` 与任务原文不入日志（断言覆盖）
+- [ ] Checkpoint · Upstream tier（validate + 变异 0 存活；D1 / D3 在此之前定下）
+- [ ] Task 19 · 按失败次数升档：L1 失败 → L2，只升不降、不低于 floor，记录 `escalation`
+- [ ] Task 20 · L2 二次失败收回主会话（新 deny 路径，D3 已批准）
+- [ ] Task 21 · tier-routing skill、README、CHANGELOG、spec 同步（含 Codex hook 读不到标记的限制）
+- [ ] Task 22 · Claude Code 真实宿主验证标记 / floor / 收回（跑前确认写 `~/.claude`）
+- [ ] Checkpoint · Phase 7 complete
+
 ## 待补宿主验收（不改变生产配置）
 
 - [x] Codex CLI 主代理明文预路由：在真实交互式 Terminal/TUI 中复现 Desktop 的三档 child 回执。

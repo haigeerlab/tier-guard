@@ -21,6 +21,7 @@ hook 编码的证据，但**不构成 v2 的完成项**。本计划完成前，�
 - hook adapter 必须在真实派发前改写参数才能启用 auto；Codex Desktop 已验证主代理明文预路由的三档实际派发，但 hook 因接收不透明令牌仍保持 advisory。
 - 2026-09-13 用户确认：自然使用时主代理不会自发加载 tier-routing，因此由派活事件驱动主代理显式预路由——audit 注入提醒（改变“audit 下 stdout 为空”的旧契约）、auto 每个会话 deny 一次；hook 仍不做语义判断。
 - 提醒与 deny 受 `host_capabilities.<host>.dispatch_nudge` 实测闸门控制，默认全部 `false`；判定逻辑只放在 `hooks/route_decide.py`。
+- 2026-10-05 用户确认 Phase 7 的 D1–D3：失败次数随标记行 `failures=N` 传入；合法上游 tier 可低于「信息不足」保守档，但撤销不了不可逆 / 歧义 / 取舍 floor；L2 二次失败收回 deny 仅 guard / auto、pin 不拦、受 `dispatch_nudge` 闸门、不限每会话一次。
 - 2026-09-13 Task 12 评估后用户确认：新增 `guard` profile 并设为默认（推翻「默认 audit」）。guard = 每会话第一次未 pin 派活 deny 一次、之后提醒，**从不改写参数**；audit 退回只记录 + 提醒；auto = guard + 参数改写。guard 不改参数，可由 `/tier-mode` 直接持久化，不需要 auto 的质量门槛。
 
 ## Dependency graph
@@ -377,6 +378,204 @@ into a broad routing claim.
 - [x] Real-host evidence exists for every claimed automatic host. Only Claude Code CLI is claimed automatic in Host compatibility; its controlled auto run started an unpinned read-only child on `claude-haiku-4-5-20251001` (`docs/research/2026-09-13-claude-cli-v2-smoke.md`). Codex CLI / Desktop remain advisory. Checked 2026-09-14.
 - [x] Semantic-provider network integration remains disabled unless separately approved. Catalog `semantic_provider.mode` is `disabled`; every local v2 routing record reports `disabled` (Claude 30, Codex 14); hooks import no network client. Checked 2026-09-14.
 
+### Phase 7: Upstream tier, escalation and tier log fields
+
+> Planned 2026-10-05 from spec sections「上游档位信号（tier）」「升档与收回」「每次派发必记的档位字段」.
+> Code is untouched by this planning step.
+
+**Where the work lands.** Both adapters already pass the full task text to `route_decide.route()` and log the
+returned decision verbatim, so parsing, precedence and the new fields belong in the core; adapters only need
+assertions that the fields arrive and nothing leaks. v2 has no explicit `floor` object today: the floor is the
+third branch of `_requirements()` (irreversible side effect, missing/ambiguous acceptance, cross-cutting scope or
+tradeoff load). Codex hooks receive `opaque_token`, so a marker in the task text is invisible there; on Codex the
+upstream tier can only take effect through the main agent following `tier-routing`.
+
+**Decisions D1–D3 — confirmed by the user on 2026-10-05 as proposed; written into the spec and the decided list above:**
+
+- **D1 · Failure-signal transport (blocks Task 19).** The spec names `consecutive_failures` but v2 has no producer
+  (it exists only as a v1 `ctx` input). Proposal: extend the same marker line with an optional non-negative integer,
+  `<!-- tier-guard: tier=L1 failures=1 -->`. Upstream counts "result uncertain" as one failure, so no second
+  keyword is needed. Requires a spec edit before Task 19.
+- **D2 · Upstream tier vs the low-confidence branch (blocks Task 17).** When every signal is `unknown`, routing is
+  conservative because information is missing, not because a floor rule fired. Proposal: a valid upstream tier
+  counts as information, so it may route below that conservative default; only the irreversible / ambiguous /
+  tradeoff floor stays binding. This narrows the decided rule「信息不足不能被路由到低能力候选」and needs explicit
+  confirmation.
+- **D3 · The L2 second-failure deny (blocks Task 20; boundary「任何会让守卫返回 deny 的改动」).** Proposal:
+  `guard` and `auto` deny, `audit` only reminds (same split as the dispatch nudge); pinned dispatches are logged but
+  not denied; the deny is gated by `host_capabilities.<host>.dispatch_nudge`, the only deny channel verified on a
+  real host; it is not limited to once per session, because a re-dispatch with the same failure count should be
+  reclaimed again.
+
+#### Task 16: Parse the upstream tier marker and record `tier_source`
+
+**Description:** Add a core parser for `<!-- tier-guard: tier=L1|L2|L3 [reason=…] -->` and accept it either from the
+task text or from `optional_context` `schema_version: 2` (which adds an optional `tier`; `schema_version: 1` stays
+valid). A valid tier maps to the existing capability labels and is used ahead of text inference; every decision
+records `tier_source` as `upstream` or `inferred`.
+
+**Acceptance criteria:**
+
+- [ ] Exactly one well-formed marker on its own line with a case-exact `L1`/`L2`/`L3` is adopted; zero markers mean
+  "not declared"; two or more, an illegal value, or an envelope whose fields do not match each degrade to
+  `unavailable`, fall back to pure inference, and never make `route()` return a fallback.
+- [ ] `tier_source` is `upstream` when the tier was adopted and `inferred` otherwise.
+- [ ] `reason` never appears in the decision; only whether it was present and its SHA-256.
+
+**Verification:**
+
+- [ ] `route_decide.py --selftest` and `test-route-contract.py` cover each degrade path with one assertion apiece;
+  the new assertions are killed in `scripts/mutation-check.py`; `check-mutation-anchors.py` and `validate.sh` pass.
+
+**Dependencies:** None.
+**Files likely touched:** `hooks/route_decide.py`, `hooks/test-route-contract.py`, `scripts/mutation-check.py`.
+**Estimated scope:** M.
+
+#### Task 17: Floor precedence, `tier_conflict`, and the `pin` / `floor` sources
+
+**Description:** Enforce `pin > floor > tier > inferred`. An upstream tier above the floor wins; one below the floor
+is overridden by the floor and the conflict is recorded as `tier_conflict: {upstream, floor}`. Pinned requests keep
+today's behaviour and report `tier_source: pin`. Applies D2 to the low-confidence branch.
+
+**Acceptance criteria:**
+
+- [ ] A task that hits the irreversible floor and carries `tier=L1` ends at the floor and records `tier_conflict`
+  (positive assertion); the same task without the marker records no conflict, and an `L3` marker on an `L1` task
+  raises it to `L3` with no conflict (negative assertions).
+- [ ] `tier_source` is separately verifiable for `pin`, `floor`, `upstream` and `inferred`.
+- [ ] Recording a conflict never turns into a deny or a fallback.
+
+**Verification:**
+
+- [ ] Selftest and contract tests hold the positive and negative cases; mutants for the comparison direction and
+  for "conflict recorded" are killed; `validate.sh` passes.
+
+**Dependencies:** Task 16; D2.
+**Files likely touched:** `hooks/route_decide.py`, `hooks/test-route-contract.py`, `scripts/mutation-check.py`.
+**Estimated scope:** M.
+
+#### Task 18: Tier fields reach both audit logs, and nothing leaks
+
+**Description:** Prove through the real adapter entry points that `tier_source` and `tier_conflict` land in
+`decisions.jsonl`, and add the log-leak assertions the spec requires: no marker `reason` text, no task text.
+
+**Acceptance criteria:**
+
+- [ ] Claude and Codex shell suites each feed a task carrying a marker with a distinctive `reason` and assert the
+  new fields are present in the written record.
+- [ ] The same suites assert the distinctive `reason` string and a distinctive task sentence occur nowhere in the
+  log file (asserted, not inspected by hand).
+- [ ] The Codex suite also covers an `opaque_token` task: no tier is adopted and `tier_source` is `inferred`.
+
+**Verification:**
+
+- [ ] `test-tier-guard.sh`, `test-tier-guard-codex.sh` and `validate.sh` pass; the leak assertions are killed by a
+  mutant that logs the raw text.
+
+**Dependencies:** Task 17.
+**Files likely touched:** `hooks/test-tier-guard.sh`, `hooks/test-tier-guard-codex.sh`, `scripts/mutation-check.py`.
+**Estimated scope:** S.
+
+### Checkpoint: Upstream tier
+
+- [ ] Tasks 16–18 pass `validate.sh`; mutation run has 0 survivors and 0 stale anchors.
+- [ ] Review with the user before escalation work starts (D1 and D3 must be settled by then).
+
+#### Task 19: Compute escalation from the failure count
+
+**Description:** Using the transport chosen in D1, compute the escalated tier: an `L1` request with one or more
+failures routes as `L2`; escalation never lowers the tier and never goes below the floor. Record
+`escalation: {from, to, consecutive_failures}` only when an escalation happened. No deny yet.
+
+**Acceptance criteria:**
+
+- [ ] `L1` + failures ≥ 1 → `L2`, with the `escalation` object; failures = 0 or no marker → no `escalation` field.
+- [ ] The escalated tier is never below the original tier and never below the floor (asserted on an
+  irreversible-task fixture).
+- [ ] An `L2` request with failures ≥ 2 is classified as "reclaim" in the decision, without any adapter output yet.
+
+**Verification:**
+
+- [ ] Selftest and contract tests; mutants on the thresholds (`>= 1`, `>= 2`) and on "only on escalation" are
+  killed; `validate.sh` passes.
+
+**Dependencies:** Checkpoint · Upstream tier; D1.
+**Files likely touched:** `hooks/route_decide.py`, `hooks/test-route-contract.py`, `scripts/mutation-check.py`, `spec/tier-guard.md` (D1 wording).
+**Estimated scope:** M.
+
+#### Task 20: Reclaim to the main session after the second L2 failure
+
+**Description:** Turn the core's "reclaim" decision into a deny through the existing channel, with a reason that
+says this is the reclaim after the second failure and asks the main agent to handle or re-scope the task. Profile,
+pin and gate behaviour follow D3.
+
+**Acceptance criteria:**
+
+- [ ] Claude suite: reclaim produces a deny with the reclaim reason and no `updatedInput`, under each profile per D3.
+- [ ] Pinned, `off`, gate-closed and missing-`session_id` cases produce no deny, each with its own assertion.
+- [ ] The once-per-session nudge marker is neither consumed nor checked by the reclaim deny.
+
+**Verification:**
+
+- [ ] `test-tier-guard.sh` (and the Codex suite for the visible-text path) plus `validate.sh`; every branch has a
+  killed mutant.
+
+**Dependencies:** Task 19; D3 (approved 2026-10-05).
+**Files likely touched:** `hooks/route_decide.py`, `hooks/claude_hook.py`, `hooks/codex_hook.py`, `hooks/test-tier-guard.sh`, `hooks/test-tier-guard-codex.sh`, `scripts/mutation-check.py`.
+**Estimated scope:** M.
+
+#### Task 21: Teach the main agent the marker, and document the contract
+
+**Description:** Update `tier-routing` so the main agent honours a marker it sees (the only path on Codex, where the
+hook cannot read it), keeps floor precedence, and carries failure logs itself. Sync README, CHANGELOG and the spec's
+acceptance list.
+
+**Acceptance criteria:**
+
+- [ ] `skills/tier-routing/SKILL.md` states marker precedence, the floor rule and that failure logs stay with the
+  main agent; the skill-sync check passes.
+- [ ] README documents the marker format and the Codex limitation; CHANGELOG has an Unreleased entry.
+- [ ] No document claims the marker works through the Codex hook.
+
+**Verification:**
+
+- [ ] `validate.sh` (including the skill-sync check) passes; wording reviewed by the user.
+
+**Dependencies:** Task 20.
+**Files likely touched:** `skills/tier-routing/SKILL.md`, `README.md`, `CHANGELOG.md`, `spec/tier-guard.md`.
+**Estimated scope:** S.
+
+#### Task 22: Real-host check of marker, floor and reclaim
+
+**Description:** On Claude Code CLI (where the hook sees the task text) run a small protocol: an `L1` marker on a
+read-only task, a forged `L1` on an irreversible task, an `L3` marker on a trivial task, and an `L2` task with
+`failures=2`. Record results in `docs/research/`.
+
+**Acceptance criteria:**
+
+- [ ] Each case's `tier_source`, `tier_conflict`, `escalation` and deny match the spec, read from an isolated audit
+  directory.
+- [ ] The evidence records no task text or `reason` text.
+
+**Verification:**
+
+- [ ] The research note reproduces each verdict from the audit records.
+
+**Dependencies:** Task 21; user approval for `claude -p --plugin-dir` (writes under `~/.claude`).
+**Files likely touched:** `docs/research/`.
+**Estimated scope:** S.
+
+### Checkpoint: Phase 7 complete
+
+- [ ] Every spec acceptance criterion for upstream tier, floor precedence, `tier_source`, escalation and log leaks
+  has a passing assertion.
+- [ ] `validate.sh` passes; mutation run has 0 survivors and 0 stale anchors.
+- [ ] Real-host evidence for Claude Code exists; the Codex limitation is documented, not claimed away.
+
+**Out of scope for Phase 7:** writing `escalated` into v2 stop records (the spec's ordered precondition 1 — a
+host-no-transcript share low enough to be representative — is not met); any `/tier-report` view of the new fields
+(no acceptance criterion asks for it); making the reclaim deny depend on parsing subagent output (a Non-goal).
+
 ## Risks and mitigations
 
 | Risk | Impact | Mitigation |
@@ -386,7 +585,12 @@ into a broad routing claim.
 | Desktop V2 does not apply updatedInput | High | Preserve advisory status; require pre-dispatch parameter-application evidence; do not emulate enforcement post-spawn. |
 | agent-skills/spec-guard coupling leaks into runtime | Medium | Explicit envelope only; automated repository scan forbids state/command references. |
 | An incorrect low route silently lowers quality | High | Conservative unknown handling, pin, audit rollout, labels and sampled quality checks. |
+| A forged low tier in task text lowers a dangerous task | High | Floor always wins over tier; conflict recorded; positive and negative assertions (Task 17). |
+| Upstream tier is silently ignored on Codex because the hook sees `opaque_token` | Medium | Main-agent path through `tier-routing` (Task 21); documented limitation; Codex suite asserts `inferred` for opaque text (Task 18). |
+| The reclaim deny traps the main agent in a loop | Medium | Deny text asks to handle or re-scope; a new dispatch is a fresh `RouteRequest`; gated by `dispatch_nudge` (D3). |
 
 ## Sequencing
 
 Tasks 1 → 2 are sequential. Tasks 3, 4 and 5 may proceed after Task 2 but all touch the route contract and should be reviewed serially in this single working tree. Task 6 follows their settled record shape. Tasks 7 and 8 come last because they must validate the code actually installed in each host, not just repository tests.
+
+Phase 7 is sequential: Tasks 16 → 17 → 18 share the decision shape, then the checkpoint settles D1 and D3 before Tasks 19 → 20. Task 21 follows the final behaviour and Task 22 validates the code as it runs in the host.
