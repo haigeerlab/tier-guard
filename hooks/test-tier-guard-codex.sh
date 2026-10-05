@@ -469,8 +469,9 @@ except Exception:
     print("no")
 PY
 }
-logdir_free_of() {  # 整个日志目录的每个文件都读一遍；目录或日志为空也算失败（防空断言）
-  python3 - "${TG18LOG}" "$@" <<'PY'
+logdir_free_of() { dir_free_of "${TG18LOG}" "$@"; }
+dir_free_of() {  # $1=目录 其余=不许出现的字符串。整个目录的每个文件都读一遍；目录或日志为空也算失败（防空断言）
+  python3 - "$@" <<'PY'
 import os, sys
 root, needles = sys.argv[1], sys.argv[2:]
 seen = 0
@@ -499,6 +500,49 @@ check "tier18：不透明令牌 → 不采纳任何 tier（upstream_tier=absent�
   "$(rec18 -1 'r["task_visibility"] == "opaque_token" and r["decision"]["upstream_tier"] == {"status": "absent"} and r["decision"]["tier_source"] == "inferred" and "tier_conflict" not in r["decision"]')"
 check "tier18：日志目录里找不到 reason 原文、任务原文和不透明令牌" \
   "$(logdir_free_of "${TG18_REASON}" "${TG18_TASK}" "${OPAQUE_TASK_TOKEN}")"
+
+# ── Task 20：L2 第二次失败 → 收回 deny（可见文本路径；不透明令牌看不到标记，永远不会收回）──
+# 生产目录的 codex-cli.dispatch_nudge 仍关闭；这里用闸门打开的派生目录，与上面的 nudge 用例同法。
+TG20LOG="${TMP}/tg20-log"; rm -rf "${TG20LOG}"
+TG20_REASON="TG20-REASON-SENTINEL-4b8d"; TG20_TASK="TG20-TASK-SENTINEL-e72a"
+R20_TASK="${TG20_TASK} 只读审查配置，禁止修改任何文件。"$'\n验收：报告所有键名。\n'"<!-- tier-guard: tier=L2 failures=2 reason=${TG20_REASON} -->"
+rec20() {  # $1=python 表达式（r = TG20LOG 里最后一条日志）
+  python3 - "$1" "${TG20LOG}/decisions.jsonl" <<'PY'
+import json, sys
+try:
+    r = json.loads(open(sys.argv[2], encoding="utf-8").read().splitlines()[-1])
+    print("yes" if eval(sys.argv[1]) else "no")
+except Exception:
+    print("no")
+PY
+}
+r20_deny_json='o["hookSpecificOutput"]["permissionDecision"] == "deny" and "第二次失败" in o["hookSpecificOutput"]["permissionDecisionReason"] and "2 次" in o["hookSpecificOutput"]["permissionDecisionReason"] and "重新界定" in o["hookSpecificOutput"]["permissionDecisionReason"] and "updatedInput" not in o["hookSpecificOutput"]'
+reason_lacks_sentinels() { case "${OUT}" in *TG20-*) return 1 ;; esac; return 0; }
+runnudgewith guard "$(spn R20S "${R20_TASK}" - -)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：gate 开 + guard + L2 失败 2 次（可见文本）→ deny，原因含第二次失败与失败计数，不带 updatedInput" "$(jsonq "${r20_deny_json}")"
+check "tier20：收回 deny 的输出不含任务原文和 reason 原文" "$(yn reason_lacks_sentinels)"
+check "tier20：收回 deny 记 task_visibility=visible、reclaim_output=deny、nudge=none" \
+  "$(rec20 'r["task_visibility"] == "visible" and r["reclaim_output"] == "deny" and r["nudge"] == "none"')"
+check "tier20：收回 deny 没有创建 nudge 标记（既不检查也不消耗）" "$(yn [ ! -e "${TG20LOG}/nudge-denied" ])"
+runnudgewith guard "$(spn R20S "${NUDGE_TASK}" - -)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：收回之后同会话的普通未 pin 派活仍拿到第一次 nudge deny" \
+  "$(jsonq 'o["hookSpecificOutput"]["permissionDecision"] == "deny" and "第二次失败" not in o["hookSpecificOutput"]["permissionDecisionReason"]')"
+runnudgewith auto "$(spn R20M "${R20_TASK}" - -)" "${V2_NUDGE_MERGED_CONFIG}" "${TG20LOG}"
+check "tier20：auto + pre_dispatch_apply=true → 仍是 deny，不带 updatedInput" "$(jsonq "${r20_deny_json}")"
+runnudgewith audit "$(spn R20U "${R20_TASK}" - -)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：audit → 只提醒（additionalContext），不 deny" \
+  "$(jsonq '"第二次失败" in o["hookSpecificOutput"]["additionalContext"] and "permissionDecision" not in o["hookSpecificOutput"]')"
+runnudgewith guard "$(spn R20G "${R20_TASK}" - -)" "${ROOT}/config/routing.catalog.v2.json" "${TG20LOG}"
+check "tier20：生产目录 codex-cli.dispatch_nudge=false → 不收回、stdout 空" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
+check "tier20：闸门关闭只记录：决策里有 reclaim，但没有 reclaim_output" "$(rec20 '"reclaim" in r["decision"] and "reclaim_output" not in r')"
+runnudgewith guard "$(spn R20P "${R20_TASK}" gpt-6.1-sol medium)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：pin 的派活 → 不收回、stdout 空" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
+runnudgewith guard "$(spn - "${R20_TASK}" - -)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：payload 没有 session_id → 收回 deny 照样成立（不依赖 session_id）" "$(jsonq "${r20_deny_json}")"
+runnudgewith guard "$(spn R20Q "${OPAQUE_TASK_TOKEN}" - -)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：不透明令牌看不到标记 → 永远没有 reclaim，也没有收回输出" \
+  "$(rec20 'r["task_visibility"] == "opaque_token" and "reclaim" not in r["decision"] and "reclaim_output" not in r')"
+check "tier20：收回全过程的日志目录里找不到任务原文和 reason 原文" "$(dir_free_of "${TG20LOG}" "${TG20_REASON}" "${TG20_TASK}")"
 
 MS="$(python3 - "${HOOK}" "$(sp "${IRR}" gpt-5.6-terra high)" "${FAKEHOME}" "${LOGD}" <<'PY'
 import os, subprocess, sys, time

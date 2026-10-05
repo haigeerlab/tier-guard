@@ -703,6 +703,97 @@ def _requirements''', "killed"),
     ("tier19: reclaim 不记失败计数", RD, RTC,
      '''reclaim = {"tier": "L2", "consecutive_failures": failures}''',
      '''reclaim = {"tier": "L2"}''', "killed"),
+    # ── Task 20：L2 第二次失败 → 收回 deny / remind ──
+    ("tier20: 收回判据忽略 off（off 也收回）", RD, RDT,
+     '''    if profile == "off":
+        return None
+    if host_gate''',
+     '''    if False:
+        return None
+    if host_gate''', "killed"),
+    ("tier20: 收回判据忽略闸门（闸门关也收回）", RD, RDT,
+     '''if host_gate is not True or pinned is not False:
+        return None
+    if not (isinstance''',
+     '''if pinned is not False:
+        return None
+    if not (isinstance''', "killed"),
+    ("tier20: 收回判据忽略 pin（pin 也收回）", RD, RDT,
+     '''if host_gate is not True or pinned is not False:
+        return None
+    if not (isinstance''',
+     '''if host_gate is not True:
+        return None
+    if not (isinstance''', "killed"),
+    ("tier20: 收回判据把判不出 pin（None）当成未 pin", RD, RDT,
+     '''if host_gate is not True or pinned is not False:
+        return None
+    if not (isinstance''',
+     '''if host_gate is not True or pinned is True:
+        return None
+    if not (isinstance''', "killed"),
+    ("tier20: 决策里没有 reclaim 也收回", RD, RDT,
+     '''if not (isinstance(decision, dict) and decision.get("reclaim")):
+        return None''',
+     '''if False:
+        return None''', "killed"),
+    ("tier20: audit 也 deny（audit 与 guard 不分）", RD, RDT,
+     '''return "remind" if profile == "audit" else "deny"''',
+     '''return "deny"''', "killed"),
+    ("tier20: guard/auto 只提醒（deny 与 remind 对调）", RD, RDT,
+     '''return "remind" if profile == "audit" else "deny"''',
+     '''return "deny" if profile == "audit" else "remind"''', "killed"),
+    ("tier20: auto 只提醒（auto 与 guard 不分）", RD, RDT,
+     '''return "remind" if profile == "audit" else "deny"''',
+     '''return "remind" if profile in ("audit", "auto") else "deny"''', "killed"),
+    ("tier20: 收回文案不带失败计数", RD, RDT,
+     '''（上游报告连续失败 {n} 次）''',
+     '''（上游报告连续失败）''', "killed"),
+    ("tier20: Claude 收回晚于 nudge 判定（消耗了 nudge 标记）", CH, TTG,
+     '''        n = {"action": "none", "text": None}
+    else:''',
+     '''        n = rd.nudge_decision(mode, nudge_pin, host_nudge_gate, session_id, tier_state.nudge_already_denied(session_id), nudge_summary)
+    else:''', "killed"),
+    ("tier20: Codex 收回晚于 nudge 判定（消耗了 nudge 标记）", CX, TGC,
+     '''        n = {"action": "none", "text": None}
+    else:''',
+     '''        n = rd.nudge_decision(mode, nudge_pin, host_nudge_gate, session_id, tier_state.nudge_already_denied(session_id), nudge_summary)
+    else:''', "killed"),
+    ("tier20: Claude 收回 deny 带 updatedInput", CH, TTG,
+     '''"permissionDecisionReason": reclaim_text}}''',
+     '''"permissionDecisionReason": reclaim_text, "updatedInput": ti}}''', "killed"),
+    ("tier20: Codex 收回 deny 带 updatedInput", CX, TGC,
+     '''"permissionDecisionReason": reclaim_text}}''',
+     '''"permissionDecisionReason": reclaim_text, "updatedInput": ti}}''', "killed"),
+    ("tier20: Claude 收回原因里带任务原文", CH, TTG,
+     '''"permissionDecisionReason": reclaim_text}}''',
+     '''"permissionDecisionReason": reclaim_text + prompt}}''', "killed"),
+    ("tier20: Codex 收回原因里带任务原文", CX, TGC,
+     '''"permissionDecisionReason": reclaim_text}}''',
+     '''"permissionDecisionReason": reclaim_text + text}}''', "killed"),
+    ("tier20: Claude 不记 reclaim_output", CH, TTG,
+     '''rec["reclaim_output"] = reclaim_output  # 只记输出了什么，不记任何文本''',
+     '''pass''', "killed"),
+    ("tier20: Codex 不记 reclaim_output", CX, TGC,
+     '''rec["reclaim_output"] = reclaim_output  # 只记输出了什么，不记任何文本''',
+     '''pass''', "killed"),
+    ("tier20: Claude 收回要求 session_id", CH, TTG,
+     '''reclaim_output = rd.reclaim_decision(mode, nudge_pin, host_nudge_gate, d)''',
+     '''reclaim_output = rd.reclaim_decision(mode, nudge_pin, host_nudge_gate, d) if session_id else None''', "killed"),
+    ("tier20: Codex 收回要求 session_id", CX, TGC,
+     '''reclaim_output = rd.reclaim_decision(mode, nudge_pin, host_nudge_gate, d)''',
+     '''reclaim_output = rd.reclaim_decision(mode, nudge_pin, host_nudge_gate, d) if session_id else None''', "killed"),
+    ("tier20: Claude audit 收回提醒文本丢失", CH, TTG,
+     '''    if reclaim_output == "remind":
+        reminder_text = reclaim_text''',
+     '''    if reclaim_output == "remind":
+        reminder_text = ""''', "killed"),
+    ("tier20: Claude audit 收回提醒不输出", CH, TTG,
+     '''if nudge_status == "reminded" or reclaim_output == "remind":''',
+     '''if nudge_status == "reminded":''', "killed"),
+    ("tier20: Codex audit 收回提醒不输出", CX, TGC,
+     '''if nudge_status == "reminded" or reclaim_output == "remind":''',
+     '''if nudge_status == "reminded":''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")

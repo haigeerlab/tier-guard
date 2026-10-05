@@ -589,8 +589,9 @@ except Exception:
     print("no")
 PY
 }
-logdir_free_of() {  # 整个日志目录的每个文件都读一遍；目录或日志为空也算失败（防空断言）
-  python3 - "${TG18LOG}" "$@" <<'PY'
+logdir_free_of() { dir_free_of "${TG18LOG}" "$@"; }
+dir_free_of() {  # $1=目录 其余=不许出现的字符串。整个目录的每个文件都读一遍；目录或日志为空也算失败（防空断言）
+  python3 - "$@" <<'PY'
 import os, sys
 root, needles = sys.argv[1], sys.argv[2:]
 seen = 0
@@ -615,6 +616,57 @@ check "tier18：伪造 tier=L1 的不可逆任务 → 记录 tier_conflict={upst
 check "tier18：伪造 tier=L1 的不可逆任务 → 记录 tier_source=floor，目标是 opus" \
   "$(rec18 -1 'r["decision"]["tier_source"] == "floor" and r["decision"]["target"]["model"] == "opus"')"
 check "tier18：日志目录里找不到 reason 原文和任务原文" "$(logdir_free_of "${TG18_REASON}" "${TG18_TASK}")"
+
+# ── Task 20：L2 第二次失败 → 收回 deny / remind（判据在 route_decide.reclaim_decision）──
+# 独立日志目录；闸门开的目录用 V2_NUDGE_CONFIG（claude-code.dispatch_nudge=true，pre_dispatch_apply=true）。
+TG20LOG="${TMP}/tg20-log"; rm -rf "${TG20LOG}"
+TG20_REASON="TG20-REASON-SENTINEL-4b8d"; TG20_TASK="TG20-TASK-SENTINEL-e72a"
+R20_TASK="${TG20_TASK} 只读审查配置，禁止修改任何文件。"$'\n验收：报告所有键名。\n'"<!-- tier-guard: tier=L2 failures=2 reason=${TG20_REASON} -->"
+rec20() {  # $1=python 表达式（r = TG20LOG 里最后一条日志）
+  python3 - "$1" "${TG20LOG}/decisions.jsonl" <<'PY'
+import json, sys
+try:
+    r = json.loads(open(sys.argv[2], encoding="utf-8").read().splitlines()[-1])
+    print("yes" if eval(sys.argv[1]) else "no")
+except Exception:
+    print("no")
+PY
+}
+r20_deny_json='o["hookSpecificOutput"]["hookEventName"] == "PreToolUse" and o["hookSpecificOutput"]["permissionDecision"] == "deny" and "第二次失败" in o["hookSpecificOutput"]["permissionDecisionReason"] and "2 次" in o["hookSpecificOutput"]["permissionDecisionReason"] and "重新界定" in o["hookSpecificOutput"]["permissionDecisionReason"] and "updatedInput" not in o["hookSpecificOutput"]'
+reason_lacks_sentinels() { case "${OUT}" in *TG20-*) return 1 ;; esac; return 0; }
+runnudgewith guard "$(mksess R20S "${R20_TASK}" - nomodel)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：guard + L2 失败 2 次 → deny，原因点明第二次失败、带失败计数、要求重新界定，不带 updatedInput" "$(jsonq "${r20_deny_json}")"
+check "tier20：收回 deny 的输出不含任务原文和 reason 原文" "$(yn reason_lacks_sentinels)"
+check "tier20：收回 deny 记 reclaim_output=deny、nudge=none、applied=false" \
+  "$(rec20 'r["reclaim_output"] == "deny" and r["nudge"] == "none" and r["applied"] is False and r["decision"]["reclaim"] == {"tier": "L2", "consecutive_failures": 2}')"
+check "tier20：收回 deny 没有创建 nudge 标记（既不检查也不消耗）" "$(yn [ ! -e "${TG20LOG}/nudge-denied" ])"
+runnudgewith guard "$(mksess R20S "${R20_TASK}" - nomodel)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：同会话带同样失败计数重派 → 再次收回（不受每会话一次限制）" "$(jsonq "${r20_deny_json}")"
+runnudgewith guard "$(mksess R20S "${NUDGE_TASK}" - nomodel)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：收回之后同会话的普通未 pin 派活仍拿到第一次 nudge deny" \
+  "$(jsonq 'o["hookSpecificOutput"]["permissionDecision"] == "deny" and "第二次失败" not in o["hookSpecificOutput"]["permissionDecisionReason"]')"
+check "tier20：该次记 nudge=denied，且没有 reclaim_output" "$(rec20 'r["nudge"] == "denied" and "reclaim_output" not in r')"
+runnudgewith auto "$(mksess R20A "${R20_TASK}" - nomodel)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：auto + pre_dispatch_apply=true → 仍是 deny，不带 updatedInput" "$(jsonq "${r20_deny_json}")"
+check "tier20：auto 的收回 deny 记 host_pre_dispatch_apply=true、reclaim_output=deny、applied=false" \
+  "$(rec20 'r["host_pre_dispatch_apply"] is True and r["reclaim_output"] == "deny" and r["applied"] is False')"
+runnudgewith guard "$(mksess - "${R20_TASK}" - nomodel)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：payload 没有 session_id → 收回 deny 照样成立（不依赖 session_id）" "$(jsonq "${r20_deny_json}")"
+runnudgewith audit "$(mksess R20U "${R20_TASK}" - nomodel)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：audit → 只提醒（additionalContext），不 deny、不改写" \
+  "$(jsonq '"第二次失败" in o["hookSpecificOutput"]["additionalContext"] and "permissionDecision" not in o["hookSpecificOutput"] and "updatedInput" not in o["hookSpecificOutput"]')"
+check "tier20：audit 收回提醒记 reclaim_output=remind、nudge=none" "$(rec20 'r["reclaim_output"] == "remind" and r["nudge"] == "none"')"
+runnudgewith guard "$(mksess R20P "${R20_TASK}" sonnet nomodel)" "${V2_NUDGE_CONFIG}" "${TG20LOG}"
+check "tier20：pin 的派活 → 不收回、stdout 空" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
+check "tier20：pin 的派活只记录：决策里有 reclaim，但没有 reclaim_output" "$(rec20 '"reclaim" in r["decision"] and "reclaim_output" not in r')"
+runnudgewith guard "$(mksess R20G "${R20_TASK}" - nomodel)" "${V2_ROUTE_CONFIG}" "${TG20LOG}"
+check "tier20：dispatch_nudge 闸门关闭 → 不收回、stdout 空" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
+check "tier20：闸门关闭只记录：决策里有 reclaim，但没有 reclaim_output" "$(rec20 '"reclaim" in r["decision"] and "reclaim_output" not in r')"
+TG20OFF="${TMP}/tg20-off"; mkdir -p "${TG20OFF}"; printf 'off\n' > "${TG20OFF}/mode"
+OUT="$(printf '%s' "$(mksess R20O "${R20_TASK}" - nomodel)" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" CLAUDE_PROJECT_DIR="${PROJ}" \
+        TIER_GUARD_LOG_DIR="${TG20OFF}" TIER_GUARD_CONFIG="${V2_NUDGE_CONFIG}" /bin/bash "${HOOK}" agent)"; RC=$?
+check "tier20：状态文件 off → 不收回、stdout 空、不留日志" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" -a ! -e "${TG20OFF}/decisions.jsonl" ])"
+check "tier20：收回全过程的日志目录里找不到任务原文和 reason 原文" "$(dir_free_of "${TG20LOG}" "${TG20_REASON}" "${TG20_TASK}")"
 
 # ── 性能：单次 < 100ms（实测中位数）──
 MS="$(python3 - "${HOOK}" "${IRR}" "${FAKEHOME}" "${LOGD}" <<'PY'

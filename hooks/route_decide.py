@@ -411,6 +411,8 @@ def route(request, cfg):
 
 NUDGE_REMIND_TEXT = "tier-guard：创建未 pin 的子代理前，请先按 tier-routing skill 判断本次子任务所需能力，并在派活参数中显式传入候选目录里最低成本合格的 model（Codex 另传 reasoning_effort）。显式参数视为 pin，不会被改写。"
 NUDGE_DENY_TEXT = "tier-guard（auto）：本会话第一次未 pin 的派活已被拦下。请先加载 tier-routing skill，按本次子任务选择候选目录中最低成本合格的 model（Codex 另传 reasoning_effort），带上显式参数后重新派活；本会话之后不会再拦截。"
+RECLAIM_DENY_TEXT = "tier-guard：这是 L2 任务第二次失败后的收回（上游报告连续失败 {n} 次）。本次派活已被拦下，不会自动重试：请主代理自己处理这项任务，或把它重新界定成一个新任务后再派活。"
+RECLAIM_REMIND_TEXT = "tier-guard：L2 任务已连续失败 {n} 次（第二次失败后的收回）。本次派活照常放行；建议主代理自己处理这项任务，或把它重新界定成一个新任务后再派活。"
 
 
 def catalog_summary(cfg, host):
@@ -456,6 +458,29 @@ def nudge_decision(profile, pinned, host_gate, session_id, already_denied, summa
     if isinstance(session_id, str) and session_id and already_denied is not True:
         return {"action": "deny", "text": nudge_text("deny", summary)}
     return {"action": "remind", "text": nudge_text("remind", summary)}
+
+
+def reclaim_text(action, failures):
+    """收回文案：只带失败计数，绝不含任务文本或 reason。"""
+    base = {"deny": RECLAIM_DENY_TEXT, "remind": RECLAIM_REMIND_TEXT}.get(action)
+    return None if base is None else base.format(n=int(failures))
+
+
+def reclaim_decision(profile, pinned, host_gate, decision):
+    """L2 第二次失败后的收回判据（spec「升档与收回 → 规则」，D3）。→ "deny" / "remind" / None。
+
+    guard、auto → deny；audit → remind；off、pin（True 或 None）、闸门关闭、决策里没有 reclaim → None。
+    与 nudge 的区别：不依赖 session_id，不读写每会话一次的 nudge 标记，也不限制次数——
+    带着同样的失败计数重派应当再次被收回。适配层先于 nudge 调用本函数。"""
+    if profile not in ROUTING_PROFILES:
+        raise ValueError(f"未知 profile {profile!r}")
+    if profile == "off":
+        return None
+    if host_gate is not True or pinned is not False:
+        return None
+    if not (isinstance(decision, dict) and decision.get("reclaim")):
+        return None
+    return "remind" if profile == "audit" else "deny"
 
 
 def check_config(cfg):
@@ -984,6 +1009,31 @@ def selftest():
          == {"action": "deny", "text": NUDGE_DENY_TEXT + SUMMARY_TEST})
     case("nudge：summary 为空串时 remind 恰好等于基础常量",
          nudge_decision("audit", False, True, "s1", False, "") == {"action": "remind", "text": NUDGE_REMIND_TEXT})
+
+    # Task 20：reclaim_decision 真值表（判据只在这里；适配层只负责编码）
+    RC = {"reclaim": {"tier": "L2", "consecutive_failures": 2}}
+    case("reclaim：guard + 未 pin + 闸门开 + 有 reclaim → deny", reclaim_decision("guard", False, True, RC) == "deny")
+    case("reclaim：auto → deny", reclaim_decision("auto", False, True, RC) == "deny")
+    case("reclaim：audit → remind", reclaim_decision("audit", False, True, RC) == "remind")
+    case("reclaim：off → None", reclaim_decision("off", False, True, RC) is None)
+    case("reclaim：pin（True）→ None", reclaim_decision("guard", True, True, RC) is None)
+    case("reclaim：pin 判不出（None，如插件 agent）→ None", reclaim_decision("guard", None, True, RC) is None)
+    case("reclaim：闸门关闭 → None", reclaim_decision("guard", False, False, RC) is None)
+    case("reclaim：闸门缺省（None）→ None", reclaim_decision("guard", False, None, RC) is None)
+    case("reclaim：决策里没有 reclaim → None", reclaim_decision("guard", False, True, {"action": "select"}) is None)
+    case("reclaim：决策是 fallback 形状 → None", reclaim_decision("guard", False, True, {"fallback": "x"}) is None)
+
+    def reclaim_raises():
+        try:
+            reclaim_decision("nope", False, True, RC)
+        except ValueError:
+            return True
+        return False
+    case("reclaim：未知 profile → 抛 ValueError（适配层失败即放行）", reclaim_raises())
+    case("reclaim：deny 文案点明第二次失败、带失败计数、要求自己处理或重新界定",
+         all(x in reclaim_text("deny", 5) for x in ("第二次失败", "5", "自己处理", "重新界定")))
+    case("reclaim：remind 文案带失败计数", "7" in reclaim_text("remind", 7))
+    case("reclaim：未知 action → None", reclaim_text("none", 2) is None)
 
     print("")
     print(f"  总计 {len(ok)} 通过 / {len(bad)} 失败")

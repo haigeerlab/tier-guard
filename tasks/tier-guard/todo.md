@@ -72,7 +72,9 @@
 - [x] Task 19 · 按失败次数升档：L1 失败 → L2，只升不降、不低于 floor，记录 `escalation`
   - floor 也命中时 `escalation.to` 取最终有效档（L3），冲突仍记上游声明档；收回按声明档判定（宁可多收回）；
     L3 失败不做任何事。`reclaim` 只进决策、不改 action / target，deny 留给 Task 20
-- [ ] Task 20 · L2 二次失败收回主会话（新 deny 路径，D3 已批准）
+- [x] Task 20 · L2 二次失败收回主会话（新 deny 路径，D3 已批准）
+  - 偏离计划：计划写「缺 `session_id` 不 deny」，那是从预路由提醒照搬的笔误；按 spec D3，收回不依赖 `session_id`，缺了照样 deny
+  - 生产影响：Claude 闸门开着，guard 下带 `tier=L2 failures>=2` 的派活会被真实拦下；Codex 闸门关闭，行为不变
 - [ ] Task 21 · tier-routing skill、README、CHANGELOG、spec 同步（含 Codex hook 读不到标记的限制）
 - [ ] Task 22 · Claude Code 真实宿主验证标记 / floor / 收回（跑前确认写 `~/.claude`）
 - [ ] Checkpoint · Phase 7 complete

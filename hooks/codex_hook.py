@@ -145,9 +145,15 @@ def on_spawn_v2(payload, cfg, mode, catalog_identity):
     session_id = payload.get("session_id")
     nudge_pin = _codex_nudge_pin(ti)
     host_nudge_gate = rd.host_nudge_enabled(cfg, "codex-cli")
-    already_denied = tier_state.nudge_already_denied(session_id)
     nudge_summary = rd.catalog_summary(cfg, "codex-cli")
-    n = rd.nudge_decision(mode, nudge_pin, host_nudge_gate, session_id, already_denied, nudge_summary)
+    # 收回（L2 第二次失败）先于 nudge 判定：命中就只输出收回，不检查也不消耗 nudge 标记。
+    reclaim_output = rd.reclaim_decision(mode, nudge_pin, host_nudge_gate, d)
+    if reclaim_output is not None:
+        reclaim_text = rd.reclaim_text(reclaim_output, d["reclaim"]["consecutive_failures"])
+        n = {"action": "none", "text": None}
+    else:
+        already_denied = tier_state.nudge_already_denied(session_id)
+        n = rd.nudge_decision(mode, nudge_pin, host_nudge_gate, session_id, already_denied, nudge_summary)
     nudge_status, deny_reason, reminder_text = "none", None, None
     if n["action"] == "deny":
         if tier_state.claim_nudge_deny(session_id) == "created":
@@ -167,6 +173,16 @@ def on_spawn_v2(payload, cfg, mode, catalog_identity):
            "catalog_identity": catalog_identity,
            "decision": d, "host_pre_dispatch_apply": host_pre_dispatch_apply,
            "nudge": nudge_status, "applied": False}
+    if reclaim_output is not None:
+        rec["reclaim_output"] = reclaim_output  # 只记输出了什么，不记任何文本
+
+    if reclaim_output == "deny":
+        # 收回 deny 同样压过 updatedInput 改写，auto 下也不例外。
+        return rec, {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                             "permissionDecision": "deny",
+                                             "permissionDecisionReason": reclaim_text}}
+    if reclaim_output == "remind":
+        reminder_text = reclaim_text
 
     if nudge_status == "denied":
         # deny 压过下面的 updatedInput 改写：本次调用绝不应用路由目标。
@@ -190,7 +206,7 @@ def on_spawn_v2(payload, cfg, mode, catalog_identity):
             "updatedInput": new_ti}}
         rec["applied"] = True
 
-    if nudge_status == "reminded":
+    if nudge_status == "reminded" or reclaim_output == "remind":
         if out is not None:
             out["hookSpecificOutput"]["additionalContext"] = reminder_text
         else:
