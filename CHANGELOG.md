@@ -3,6 +3,57 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Upstream tier marker. A task can now carry a line of its own,
+  `<!-- tier-guard: tier=L1|L2|L3 [failures=N] [reason=…] -->`, and the router
+  uses that tier instead of guessing from the text. It travels in the task text
+  because the hook sees nothing but `tool_input`; there is no side channel, and
+  tier-guard still never reads an upstream tool's files or state. Anything
+  malformed (no marker, two markers, a lowercase `l2`, a negative `failures`,
+  text on the same line) degrades to "no marker" and routing falls back to
+  inference, so a bad marker can never make the guard fail. `optional_context`
+  gains `schema_version: 2` with an optional `tier`; version 1 envelopes keep
+  working. If an envelope tier and a marker disagree, neither is trusted and
+  routing falls back to inference.
+- Precedence is pin > floor > tier > inferred, and an upstream tier cannot lower
+  the floor. The marker rides in task text, so the text can forge it: without
+  this rule a task that says `tier=L1` could route an irreversible `git push` to
+  the cheapest model. Irreversible, ambiguous, cross-cutting and tradeoff work
+  stays on the top tier, and the attempt is recorded as `tier_conflict:
+  {upstream, floor}`. Recording a conflict never denies or changes the dispatch.
+  With no floor, a valid tier now wins even over the conservative "not enough
+  information" default, because a declared tier is information.
+- `tier_source` (`pin`, `floor`, `upstream` or `inferred`) in every v2 decision,
+  so a log reader can see where a tier came from instead of reconstructing it.
+- Escalation and reclaim, driven by the marker's `failures` count (tier-guard
+  does not judge failure itself; the upstream says so). `tier=L1` with at least
+  one failure routes as L2, never below the floor, and is logged as
+  `escalation: {from, to, consecutive_failures}`, where `to` is the final tier
+  after the floor. `tier=L2` with two or more failures is a reclaim: on Claude
+  Code the hook denies the dispatch with a reason that names the second failure
+  and asks the main agent to handle the task or re-scope it as a new one;
+  `audit` only reminds, and pinned dispatches, `off` and a closed
+  `dispatch_nudge` gate do nothing. The reclaim deny is live on Claude Code,
+  because its `dispatch_nudge` gate is open; Codex is unchanged, because its
+  gate is still closed. Unlike the first-dispatch nudge, it does not need a
+  `session_id`, is not limited to once per session and never touches the nudge
+  marker, so the same failure count re-dispatched is reclaimed again. The
+  deny never carries `updatedInput`, even under `auto`.
+- New log fields: `tier_source`, `tier_conflict`, `escalation`, `reclaim` (in
+  the decision) and `reclaim_output` (on the record, only when the hook emitted
+  something). The marker's `reason` is logged only as a presence flag and a
+  SHA-256, and neither the reason, the failure log nor the task text is ever
+  written; assertions in both adapter suites read the whole log directory to
+  prove it.
+- `tier-routing` now teaches the main agent the marker: honour it, never go
+  below the floor, escalate at one failure, handle the task itself at two, and
+  carry failure logs to the next attempt itself. This matters most on Codex:
+  its hook sees only an opaque token and cannot read the marker, so the skill
+  is the only way the marker takes effect there.
+
 ## [0.2.2] - 2026-10-05
 
 ### Added

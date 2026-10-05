@@ -38,6 +38,46 @@
 > 保留原样作为证据。候选目录已于 2026-10-05 更新为上表，三档派发行为尚未在新目录下复验；
 > 更新依据见 [模型目录更新](docs/research/2026-10-model-catalog-update.md)。
 
+## 上游档位标记
+
+上游工具（或你自己）可以为一次派活声明档位，写在任务文本里，**独占一行**：
+
+```
+<!-- tier-guard: tier=L2 failures=1 reason=按 spec 第 3 节实现，验收明确 -->
+```
+
+| 字段 | 含义 |
+|---|---|
+| `tier` | 必填，`L1` / `L2` / `L3`（大小写敏感）。L1 = 机械、只读；L2 = 有明确验收的受限实现；L3 = 跨模块取舍、歧义或不可逆 |
+| `failures` | 可选，非负整数：同一任务此前连续失败的次数。写错会让整个标记失效 |
+| `reason` | 可选，自由文本，写在最后；只给人读，不参与任何判定 |
+
+整段任务里必须恰好出现一次。没有、重复、不独占一行、取值非法，都按「没有标记」处理，回到文本推断，核心不会因此失败。
+也可以通过 `optional_context` 信封（`schema_version: 2`）传 `tier`；信封不带 `failures`。
+
+**优先级：pin > floor > tier > 推断。** pin 照旧不改写。floor 是不可逆、歧义、跨模块或取舍类任务的下限，
+上游 tier 只能在它之上生效：任务文本能伪造标记，所以一段写着 `tier=L1` 的不可逆任务仍然按最高档路由，
+并在日志里记下这次冲突。没有 floor 时，tier 优先于推断，可以低于推断。
+
+**升档与收回。** `tier=L1` 且 `failures>=1` 时按 L2 路由（仍不低于 floor）；`tier=L2` 且 `failures>=2` 时，
+决策里记一条 `reclaim`，并按 profile 处理：
+
+| profile | 收回时 |
+|---|---|
+| `guard`、`auto` | deny：原因说明这是第二次失败后的收回，要求主代理自己处理或重新界定任务；从不带 `updatedInput` |
+| `audit` | 只输出提醒，派活照常放行 |
+| `off`、pin 的派活、宿主 `dispatch_nudge` 闸门关闭 | 什么都不做 |
+
+收回不依赖 `session_id`，也不受「每会话至多一次」限制；它不读写预路由提醒的会话标记。当前只有 Claude Code 的闸门是开的，
+所以收回 deny 在 Claude Code 上已生效，Codex 不变。失败日志由主代理自己交给下一次尝试，tier-guard 不接触它。
+
+**日志里有什么。** 每次派发记 `tier_source`（`pin` / `floor` / `upstream` / `inferred`）；低于 floor 时记 `tier_conflict`；
+升档时记 `escalation`（`to` 是过 floor 之后的最终档）；收回有输出时记 `reclaim_output`（`deny` / `remind`）；
+`reason` 只记是否存在和它的 SHA-256。**从不记录**任务原文、`reason` 正文、失败日志。
+
+**Codex 的限制。** 目前 Codex 的 hook 在边界只看到不透明令牌，**读不到这个标记**，所以 hook 在 Codex 上不会采纳 tier、
+也不会产生升档或收回；`tier-routing` skill 让主代理自己读标记并遵守同样的规则，是标记在 Codex 上生效的唯一途径。
+
 ## 安全边界
 
 默认模式是 `guard`：写入最小化审计信息（任务长度和 SHA-256，不保存任务原文），不改写派发参数；宿主 `dispatch_nudge` 打开时，每个会话第一次未 pin 派活会被拦下一次、要求主代理显式传参。`audit` 仍可选作只提醒、不拦截。Claude Code CLI 的 `dispatch_nudge` 已开启（Codex 仍关闭），所以在 Claude 上默认每个会话第一次未 pin 的子代理派活会被拦下一次。

@@ -199,6 +199,9 @@ hook 在派发边界只能看到 `tool_input`，没有旁路元数据通道。�
 <!-- tier-guard: tier=L2 -->
 ```
 
+**Codex 上标记不经 hook 生效**：原生 `spawn_agent` 在 hook 边界交付不透明令牌，hook 读不到它；在 Codex 上它只靠
+`tier-routing` 让主代理自己读取并遵守。
+
 可选附 `reason`：`<!-- tier-guard: tier=L2 reason=按 spec 第 3 节实现，验收明确 -->`
 
 可选附 `failures`（2026-10-05 用户确认，D1）：`<!-- tier-guard: tier=L1 failures=1 -->`，
@@ -291,7 +294,9 @@ tier-guard 只有 `PreToolUse` 与 `SubagentStop` 两个观察点，看不到测
   tier-guard 自行推测。
 - **L2 连续失败两次 → 收回主会话。** 复用既有 deny 通道输出原因，不新增机制；deny 文本说明
   这是第二次失败后的收回，要求主代理自己处理或重新界定任务。
-- 升档只升不降：升档后的档位不低于原档位，也不低于 floor。
+- 升档只升不降：升档后的档位不低于原档位，也不低于 floor。`tier_conflict.upstream` 记上游**声明**的档，
+  `escalation.to` 记过 floor 之后的最终档。
+- 收回以**声明档**判定（L2 且失败 ≥2），即使 floor 把有效档抬到 L3 也照样收回——宁可多收回。
 - 收回之后不自动重试。再次派活是一次全新的 `RouteRequest`。
 - 收回 deny 的适用范围（2026-10-05 用户确认，D3）：`guard` 与 `auto` 输出 deny，`audit` 只输出提醒，
   `off` 什么都不做；**pin 的派活只记录、不 deny**；受 `host_capabilities.<host>.dispatch_nudge` 闸门约束
@@ -411,9 +416,11 @@ adapter 已输出 `updatedInput`，不等于宿主接收或子代理实际执行
 | `tier_conflict` | 对象或缺省 | 上游 tier 低于 floor 时记 `{upstream, floor}`；无冲突不写 |
 | `requested` | 既有 | 请求的 model 与 reasoning_effort |
 | `actual_execution` | 既有 | 宿主回报的实际模型；未知即未知，不推算 |
-| `escalation` | 对象或缺省 | 升档时记 `{from, to, consecutive_failures}`；非升档不写 |
+| `escalation` | 对象或缺省 | 升档时记 `{from, to, consecutive_failures}`；`to` 是过 floor 之后的最终档；非升档不写 |
+| `reclaim` | 对象或缺省 | 上游声明 L2 且失败 ≥2 次时在决策里记 `{tier: "L2", consecutive_failures}`；以声明档为准，floor 把有效档抬到 L3 也照记；不改动作与目标 |
+| `reclaim_output` | `deny` / `remind` 或缺省 | 适配层实际输出了收回 deny 或提醒时写在派发记录上，只记输出了什么，不记文本；无输出不写。既有 `nudge` 字段含义不变 |
 
-`tier_source` 与 `escalation` 是新增的；其余沿用既有字段，语义不变。
+`tier_source`、`escalation`、`reclaim` 与 `reclaim_output` 是新增的；其余沿用既有字段，语义不变。
 
 **不记录的东西**：上游 `reason` 的正文、失败日志正文、任务原文。需要关联时只记 SHA-256。
 
@@ -438,7 +445,8 @@ adapter 已输出 `updatedInput`，不等于宿主接收或子代理实际执行
 - agent-skills/spec-guard 缺失或停用不会使 core 失败。
 - 各宿主的“建议 / 自动 / 未支持”状态有独立端到端证据。
 - 提醒与 deny 只出现在未 pin 的子代理创建事件；pin、`off`、宿主闸门关闭、无 `session_id`、异常分别有
-  可验证的“不提醒 / 不 deny”行为；deny 每个会话至多一次。
+  可验证的“不提醒 / 不 deny”行为；预路由 deny 每个会话至多一次（收回 deny 不受此限，也不依赖
+  `session_id`，见「升档与收回」）。
 - 自然触发评估在 Claude Code CLI 与 Codex CLI 上各自达到 Success criteria 的阈值，并有独立端到端证据。
 - 默认 profile 为 `guard`；`guard` 下任何路径都不输出 `updatedInput`；`/tier-mode` 可直接持久设为 `guard`
   （不改写参数，不需要 auto 的质量门槛），`audit` 仍可选作只提醒、不拦截。
