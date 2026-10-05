@@ -93,9 +93,9 @@
   - `codex-luna-high` 同时承担 L1/L2，`codex-sol-medium` 移出目录；L3 仍为 sol/xhigh
 - [x] Task 26 · tier-routing 加「所选候选不比你便宜就自己做」
   - 另加「任务小而明确也自己做」，依据 Task 23 实测；与 spec-guard「默认不派」一致
-- [ ] Task 27 · 与 spec-guard 联调：Claude / Codex × 派 / 不派，成本报告与日志交叉核对
+- [x] Task 27 · 与 spec-guard 联调：Claude / Codex × 派 / 不派，成本报告与日志交叉核对
   - 主组 14 次已核对、三方一致：Claude 仅 Task 4（L2→sonnet）派了便宜 23%；R 组 4 次一次没派；Codex 亏在 wait_agent 轮询。
-    记录：[`joint cost test`](../../docs/research/2026-10-06-spec-guard-joint-cost-test.md)。补跑：Codex W 组一次长等待后 wait_agent 25–31→5–7 次、与不派持平；Claude S 组新门槛只一半选中 Task 4 且未省钱
+    记录：[`joint cost test`](../../docs/research/2026-10-06-spec-guard-joint-cost-test.md)。口径已与 spec-guard 核清（成本报告不含最后一次勾选后的收尾轮）。补跑：Codex W 组一次长等待后 wait_agent 25–31→5–7 次、与不派持平；Claude S 组新门槛只一半选中 Task 4 且未省钱
 
 ## 待补宿主验收（不改变生产配置）
 
