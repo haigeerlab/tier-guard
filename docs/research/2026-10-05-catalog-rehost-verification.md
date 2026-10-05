@@ -1,6 +1,6 @@
 # 新候选目录的宿主复验：执行协议
 
-> 状态：**宿主兼容已复验；新 Codex 目录未复验**（见 A 节）　｜　日期：2026-10-05　｜　执行人：用户 + 主会话
+> 状态：**A / B / C 均已通过**（A 在 0.2.2 发布后复跑）　｜　日期：2026-10-05　｜　执行人：用户 + 主会话
 >
 > 本文是阶段 4 的执行清单，结果回填到下方「结果」各节。**在填入真实回执前，任何一节都不构成通过。**
 
@@ -81,7 +81,26 @@ cd /Users/vilin/Documents/haigeerlab/tier-guard && /bin/bash scripts/codex-cli-p
 
 ### 结果
 
-**宿主机制通过，新目录未覆盖。**（2026-10-05 02:06–02:07，Codex CLI `0.160.0`，隔离目录
+**0.2.2 复跑：通过。**（2026-10-05 发布 `v0.2.2` 并装到两个宿主后，同一脚本，隔离目录
+`tier-guard-cli-preroute.D6Pnil`。）
+
+| 线程 | 实际 model / effort | 审计记录 requested | 子线程自己的回复 |
+|---|---|---|---|
+| 父 | `gpt-6.1-sol / high` | — | — |
+| child_a | **`gpt-6-luna / high`** | `gpt-6-luna / high`，pinned | `CLI_PREROUTE_LUNA_OK` |
+| child_b | **`gpt-6.1-sol / medium`** | `gpt-6.1-sol / medium`，pinned | `CLI_PREROUTE_SOL_OK` |
+| child_c | **`gpt-6.1-sol / xhigh`** | `gpt-6.1-sol / xhigh`，pinned | `CLI_PREROUTE_XHIGH_OK` |
+
+四条通过条件全中：三个回复都在（从各子线程自己的 rollout 读出，不只看父代理的汇总）；3 条审计记录
+的 `catalog_identity.sha256` 都是新目录 `7ce63580…`；线程回执与新目录三档逐一对应；父线程
+`sol / high` 未变，没有任何 child 出现 `sol / high`。`task_visibility`、`applied`、`fallback`
+与首轮相同。
+
+要让宿主拿到新目录，除了发版还需要一步：Codex 的 marketplace 在 `~/.codex/config.toml` 里钉了
+`ref = "v0.2.1"`，`marketplace upgrade` 只会刷新到所钉的 tag。把它改成 `v0.2.2` 后重装才生效。
+**今后每次发版，Codex 侧都要同步改这个 ref。**
+
+**首轮（0.2.1 安装版）：宿主机制通过，新目录未覆盖。**（2026-10-05 02:06–02:07，Codex CLI `0.160.0`，隔离目录
 `tier-guard-cli-preroute.wZZTkw`，3 条审计记录、4 条线程回执。）
 
 | 线程 | 实际 model / effort | 对应审计记录 requested |
