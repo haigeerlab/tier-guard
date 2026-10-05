@@ -200,19 +200,28 @@ hook 在派发边界只能看到 `tool_input`，没有旁路元数据通道。�
 ```
 
 **Codex 上标记不经 hook 生效**：原生 `spawn_agent` 在 hook 边界交付不透明令牌，hook 读不到它；在 Codex 上它只靠
-`tier-routing` 让主代理自己读取并遵守。
+`tier-routing` 让主代理自己读取并遵守，**因此在 Codex 上标记仅作建议**。交给 Codex worker 的派活同理。
 
 可选附 `reason`：`<!-- tier-guard: tier=L2 reason=按 spec 第 3 节实现，验收明确 -->`
 
 可选附 `failures`（2026-10-05 用户确认，D1）：`<!-- tier-guard: tier=L1 failures=1 -->`，
 表示同一任务此前连续失败的次数，供[升档](#升档与收回)使用。上游把「结果不确定」也记作一次失败，
-因此不另设关键字。
+因此不另设关键字。**`failures` 由派活方在派活当场填写，不要求上游持久存储任务的失败次数**——tier-guard
+只消费这个数，不关心它是谁、怎么算出来的（2026-10-05 与 spec-guard 评估后明确）。
 
 解析规则（任何一条不满足都降级为「无上游档位」，**绝不使核心失败**）：
 
 - 整段任务文本中该标记**恰好出现一次**；出现 0 次视为未声明，出现 ≥2 次视为冲突 → `unavailable`。
 - `tier` 取值必须恰为 `L1` / `L2` / `L3`，大小写敏感。
-- 标记必须独占一行，前后允许空白。
+- 标记必须独占一行，前后允许空白。因此写在列表项下方、带缩进的一行是合法的：
+
+  ```
+  - [ ] Task 3 · 实现配置解析
+    <!-- tier-guard: tier=L2 -->
+  ```
+
+  标记生效的前提是派活方把这一行**原样带进子代理 prompt**；只截取任务首行的派活方式会丢掉它，tier-guard
+  在 hook 边界无从察觉。
 - `reason` 是自由文本，**不参与任何判定**，只用于人读。
 - `failures` 必须是非负十进制整数；非法时整个标记按非法处理（降级为 `unavailable`），不单独丢弃该字段。
 
@@ -368,6 +377,14 @@ tier-guard 不知道 spec-guard 是否存在，也不因它缺席而改变行为
 tier-guard 的只有任务文本中的那一行标记。
 若 spec-guard 在用户明确授权下创建只读预检子代理，该子代理仍可作为普通 `RouteRequest` 被路由；
 tier-guard 不改变其只读边界。
+
+**2026-10-05 评估结论（与 spec-guard 项目会话联合核对 spec-guard 0.42.0）**：spec-guard 自身流程里**没有任何一步
+经 Agent 工具或 `spawn_agent` 派子代理**——它的委派走另开会话（session-delegation / session-routing）或 Codex
+worker，这些都不经过 tier-guard 的 hook。离子代理 prompt 最近的是 `todo.md` 的任务行，但读取并派发它的是
+agent-skills 的 `/build`，spec-guard 控制不了、也验证不了标记是否被原样带进 prompt。因此**连接 2（spec-guard 写
+标记）暂缓**；标记合同对任何直接撰写子代理 prompt 的主代理或工具都适用，不绑定 spec-guard。
+连接 1（spec-guard 项目会话里经 Agent 工具的派活被 tier-guard 接管）已实测通过，见
+[联调记录](../docs/research/2026-10-05-spec-guard-joint-test.md)。
 
 ## Host compatibility
 
