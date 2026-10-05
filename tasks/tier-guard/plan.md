@@ -579,6 +579,8 @@ host-no-transcript share low enough to be representative — is not met); any `/
 
 ### Phase 8: Make subagent dispatch actually save money (with spec-guard)
 
+> Spec: `spec/tier-guard.md` → 「Dispatch economics」(written after the fact, 2026-10-05: this phase was first planned
+> without a spec update; the spec section and its assumptions were then reviewed by the user).
 > Requested by the spec-guard project session on 2026-10-05, approved by the user the same day. Division of labour:
 > spec-guard owns where and what to dispatch and the per-module cost report (it reads host session records, never tier-guard
 > logs); tier-guard owns choosing a cheaper-but-sufficient model and telling the main agent when dispatch would not save.
