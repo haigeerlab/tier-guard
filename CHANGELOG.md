@@ -5,6 +5,17 @@ All notable user-facing changes are documented here. Version numbers follow
 
 ## [Unreleased]
 
+### Added
+
+- `tier-routing` tells a Codex main agent to wait for a dispatched subagent in
+  one long `wait_agent` call (the largest allowed `timeout_ms`) instead of
+  polling. In the spec-guard joint test the main agent polled every 10 to 30
+  seconds, 25 to 31 times per run; each return is a main-session turn that
+  re-reads the whole context, so the run cost more than doing the work itself
+  even though the Luna subagents cost about $0.07 in total. Codex's own prompt
+  already says to prefer waits of minutes and was not followed. spec-guard's
+  dispatch rule says the same thing.
+
 ### Fixed
 
 - The dispatch cost figures quoted in 0.2.5 priced every cache write at 1.25x
