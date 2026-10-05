@@ -3,7 +3,7 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.3] - 2026-10-05
 
 ### Added
 
@@ -53,6 +53,18 @@ All notable user-facing changes are documented here. Version numbers follow
   carry failure logs to the next attempt itself. This matters most on Codex:
   its hook sees only an opaque token and cannot read the marker, so the skill
   is the only way the marker takes effect there.
+
+### Fixed
+
+- The first-dispatch deny said `tier-guard（auto）` even under `guard`, the
+  default profile, so a user being stopped was told the wrong mode. The text is
+  shared by `guard` and `auto`, so it now names no mode at all.
+- `scripts/codex-cli-preroute-smoke.sh` printed an empty thread table on macOS:
+  Codex records the resolved `/private/var/...` path and the script queried
+  with `/var/...`. It also opened Codex's state database read-write and left
+  one more trust entry in `~/.codex/config.toml` on every run. It now resolves
+  the path, opens the database read-only, and runs every probe under one fixed
+  repository, so Codex asks for trust once and keeps a single entry.
 
 ## [0.2.2] - 2026-10-05
 
