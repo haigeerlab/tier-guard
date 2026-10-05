@@ -44,10 +44,12 @@ L2 二次失败收回，以及收回不消耗预路由提醒的会话标记。
 - **升档**（`tier=L1 failures>=1`）没进这组宿主用例；它不涉及适配层输出，已由契约测试覆盖。
 - **Codex**：hook 只看到 `opaque_token`，标记在那里只能经 `tier-routing` 生效，本次不验证。
 
-## 顺带发现（均与 Phase 7 无关，未处理）
+## 顺带发现（均与 Phase 7 无关，已于同日处理）
 
-1. **停止记录里的 `actual_execution` 为空，尽管 `transcript_status: ok`。** 三份 transcript 事后都能读到
-   `claude-sonnet-5-5`。最可能的解释是 `SubagentStop` 触发时最后一条 assistant 消息尚未落盘。
-   `/tier-report` 本来就有事后补读 transcript 的路径；生产日志里同样的现象与正常记录并存。
-2. **首次派活 deny 的文案写死了「（auto）」**：E 在 `guard` 下被拦，原因却以「tier-guard（auto）」开头。
+1. **停止记录里的 `actual_execution` 为空，尽管 `transcript_status: ok`。** 已查清（同日）：子代理唯一的
+   assistant 消息在 `SubagentStop` 触发**之后**才写入 transcript（行时间戳晚 0.5–0.9 s；`claude -p` 下单轮子代理
+   4/4 如此）。这是 2026-09-13 就记录过的宿主行为，`/tier-report` 的事后回读已经兜住，报告数字不受影响。
+   顺着这条查出了两个真正的计数错误——同一条消息的多行被重复累加、恢复运行的子代理被按 stop 次数重复计入——
+   均已修复，见 CHANGELOG「Unreleased」与 L2 实验文档的更正。
+2. **首次派活 deny 的文案写死了「（auto）」**（已在 0.2.3 修复）：E 在 `guard` 下被拦，原因却以「tier-guard（auto）」开头。
    `NUDGE_DENY_TEXT` 是 guard 成为默认之前的旧文案。

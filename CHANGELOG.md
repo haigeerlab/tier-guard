@@ -3,6 +3,29 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Subagent token usage was counted about twice. The host writes one assistant
+  message as several transcript lines, one per content block and again while
+  streaming, and each line carries the same or a growing usage. Summing every
+  line overcounted input by 1.97x, cache write by 1.96x and cache read by 1.83x
+  on 109 real transcripts (output only 1.05x). Usage is now summed once per
+  `message.id`, keeping the largest line. New stop records carry
+  `usage_basis: message-id-dedup` so the report can tell them apart.
+- `/tier-report` counted a resumed subagent once per stop. A resumed subagent
+  appends to the same transcript and fires `SubagentStop` again, and each record
+  holds the whole file's cumulative usage, so the table added the same work
+  several times; records without stored usage were worse, each re-reading the
+  file's current total. The table now counts each subagent once: it re-reads the
+  transcript when it still exists, otherwise uses the latest record written
+  with the fixed method. Subagents left with only pre-fix usage are kept out of
+  the averages and counted in a note under the table.
+- The L2 cost experiment had the same double count in its grading script. The
+  corrected figures are $4.13 in total and an Opus/Sonnet ratio of 1.68x
+  (1.50-1.96x); the conclusion that Sonnet is cheaper on every L2 task stands.
+
 ## [0.2.3] - 2026-10-05
 
 ### Added
