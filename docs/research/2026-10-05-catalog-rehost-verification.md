@@ -1,6 +1,6 @@
 # 新候选目录的宿主复验：执行协议
 
-> 状态：**协议待执行**　｜　日期：2026-10-05　｜　执行人：用户（手动）
+> 状态：**宿主兼容已复验；新 Codex 目录未复验**（见 A 节）　｜　日期：2026-10-05　｜　执行人：用户 + 主会话
 >
 > 本文是阶段 4 的执行清单，结果回填到下方「结果」各节。**在填入真实回执前，任何一节都不构成通过。**
 
@@ -81,7 +81,28 @@ cd /Users/vilin/Documents/haigeerlab/tier-guard && /bin/bash scripts/codex-cli-p
 
 ### 结果
 
-> 待回填。
+**宿主机制通过，新目录未覆盖。**（2026-10-05 02:06–02:07，Codex CLI `0.160.0`，隔离目录
+`tier-guard-cli-preroute.wZZTkw`，3 条审计记录、4 条线程回执。）
+
+| 线程 | 实际 model / effort | 对应审计记录 requested |
+|---|---|---|
+| 父 | `gpt-6.1-sol / high` | — |
+| child_a | `gpt-5.6-luna / medium` | `gpt-5.6-luna / medium`，pinned |
+| child_b | `gpt-5.6-terra / high` | `gpt-5.6-terra / high`，pinned |
+| child_c | `gpt-5.6-terra / xhigh` | `gpt-5.6-terra / xhigh`，pinned |
+
+三个回声串都出现。三档各不相同、与审计记录逐条一致、父线程未变——**主代理读技能、按档显式传参、
+宿主照参执行这条链在 0.160 下完好**，没有继承。
+
+**但这是旧目录的三档。** 审计记录的 `catalog_identity.sha256` 是 `1ef8289d…`，即已发布的
+`0.2.1`；本仓当前目录是 `7ce63580…`。Codex 侧插件缓存按版本号建目录
+（`~/.codex/plugins/cache/tier-guard/tier-guard/0.2.1/`），目录换代的提交没有改版本号，所以
+宿主拿不到新目录。**通过条件里的 `gpt-6-luna / high`、`gpt-6.1-sol / medium`、`gpt-6.1-sol / xhigh`
+没有出现，按定义 A 不算通过。** 要真验新目录，需先发 0.2.2 让 Codex 重新安装。
+
+预期内现象均如协议所述：`task_visibility = opaque_token`、`applied = false`。另外三条记录的
+推断都是 `tradeoff + cross_cutting`、置信度 `low`、建议 `codex-terra-xhigh`——hook 看不到任务明文，
+信号全为 `unknown`，于是按最保守档建议。这是同一个已知边界的另一面，不是新问题；audit 下也不会据此改写。
 
 ---
 
@@ -108,7 +129,22 @@ for line in open(p):
 
 ### 结果
 
-> 待回填。
+**通过，带一条边界。** 把 A 的 3 条记录与本机 Codex 审计日志里全部 20 条旧 `codex-spawn` v2 记录
+（按 `session_id` 回查线程表：`0.154.0` 2 条、`0.154.0-alpha.6.2` 13 条、`0.155.0-alpha.9*` 4 条、
+`0.158.0-alpha.2.1` 1 条）逐层比对键集：
+
+| 层 | 新增 | 消失 |
+|---|---|---|
+| 顶层 | 无 | 无 |
+| `decision` | 无 | 无 |
+| `decision.requested` | 无 | 无（仍是 `model` / `reasoning_effort` / `pinned`） |
+
+`task_visibility` 仍为 `opaque_token`，三条 `fallback` 均为 `null`，`task_name` 正确取到
+`child_a` / `child_b` / `child_c`，requested 的 model/effort 与线程表一致——适配层解析出的东西都对。
+
+**边界**：比对的是 hook **写出来的**记录形状，不是宿主原始 payload。hook 不读的新字段不会出现在
+记录里；本仓不落原始 payload，所以「0.160 的 payload 里多了某个 hook 尚未利用的字段」这件事
+测不出来。能下的结论是：**hook 依赖的字段在 0.160 下都还在、语义没变。**
 
 ---
 
@@ -158,8 +194,7 @@ E 是这次 pin 修复的真实宿主验证。修复前的行为是：tier-guard
 ### 结果
 
 **A/B/C/D 已完成**（2026-10-05 18:10–18:17，由主会话用 Agent 工具直接派发，
-插件为已安装的 `0.2.1`，工作树停在 `8ff0b78`）。**E 未执行** —— 它要求在进程启动时设置
-`CLAUDE_CODE_SUBAGENT_MODEL`，当前会话改不了自己的环境变量。
+插件为已安装的 `0.2.1`，工作树停在 `8ff0b78`）。E 另行执行，见下方「E」。
 
 | | requested | tier-guard 建议 | action | nudge | 实际执行 |
 |---|---|---|---|---|---|
@@ -178,6 +213,24 @@ E 是这次 pin 修复的真实宿主验证。修复前的行为是：tier-guard
   走方向性审计（`raise`/`lower`/`keep`）。仓里本就有一条变异体守着这个区别。`lower` 才是对的。
 - C 的实际执行是 `claude-opus-5` 而非 `claude-opus-5-5`。**这不是路由错误**，见
   [模型目录更新](2026-10-model-catalog-update.md) 的「别名解析不是可断言的属性」一节。
+
+**E 通过**（2026-10-05，`claude -p --plugin-dir .`，HEAD `3224121`，独立审计目录）。启动命令带
+`CLAUDE_CODE_SUBAGENT_MODEL=sonnet TIER_GUARD_MODE=audit`，提示词要求派活时既不传 `model` 也不传
+`subagent_type`。
+
+| 核对项 | 结果 |
+|---|---|
+| 父代理 Agent 调用的参数键 | `description` / `prompt` / `run_in_background`——**没有 `model`** |
+| 审计记录 | 1 条：`pinned = true`、`requested.model = sonnet`、`action = raise`、`nudge = none`、`applied = false` |
+| 子代理实际执行 | `claude-sonnet-5-5` |
+
+调用里没有 `model`，记录却是 pinned 且 requested 为 `sonnet`——pin 只可能来自环境变量，正是
+`e90f3f6` 修的那条路径。修复前这里会判为未 pin，guard 下首次派活会被 deny。
+
+**偏离协议的一处**：协议要求用已安装插件跑，E 用了 `--plugin-dir .`。原因同 A 节——已安装的
+`0.2.1` 不含 pin 修复，用它跑只能复现修复前的行为。顺带核实了 `--plugin-dir` 会**遮蔽**同名的已安装
+插件而不是并存：唯一那条记录的目录指纹是工作树的 `7ce63580…`，不是安装版的 `1ef8289d…`；同一分钟
+生产日志 0 条，安装版 hook 没有触发。
 
 本轮顺带暴露的三件事（均已核实，已写进 spec）：v2 的 stop handler 不写 `escalated`；
 真实日志里带该字段的记录 0 条；3034 条 stop 里 2601 条（85.7%）是 `FileNotFoundError` fallback。
