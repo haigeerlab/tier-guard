@@ -69,7 +69,9 @@
 - [x] Task 18 · 两个适配层的审计记录带上新字段；`reason` 与任务原文不入日志（断言覆盖）
   - 两个适配层原样记录决策、不做过滤；未发现任何现有路径把任务原文或 reason 写进日志
 - [x] Checkpoint · Upstream tier（validate + 变异 206 / 0 / 0；D1–D3 已定；2026-10-05 用户批准进入 Task 19）
-- [ ] Task 19 · 按失败次数升档：L1 失败 → L2，只升不降、不低于 floor，记录 `escalation`
+- [x] Task 19 · 按失败次数升档：L1 失败 → L2，只升不降、不低于 floor，记录 `escalation`
+  - floor 也命中时 `escalation.to` 取最终有效档（L3），冲突仍记上游声明档；收回按声明档判定（宁可多收回）；
+    L3 失败不做任何事。`reclaim` 只进决策、不改 action / target，deny 留给 Task 20
 - [ ] Task 20 · L2 二次失败收回主会话（新 deny 路径，D3 已批准）
 - [ ] Task 21 · tier-routing skill、README、CHANGELOG、spec 同步（含 Codex hook 读不到标记的限制）
 - [ ] Task 22 · Claude Code 真实宿主验证标记 / floor / 收回（跑前确认写 `~/.claude`）

@@ -348,13 +348,29 @@ def _route(request, cfg):
     # 但不能压到 floor 之下；低于 floor 时按 floor 取并记录冲突。
     floor = _floor_hit(signals, required)
     tier_source = "floor" if floor else "inferred"
-    tier_conflict = None
+    tier_conflict = escalation = reclaim = None
     if upstream["status"] == "accepted":
-        if floor and UPSTREAM_TIERS.index(upstream["tier"]) < UPSTREAM_TIERS.index(FLOOR_TIER):
-            tier_conflict = {"upstream": upstream["tier"], "floor": FLOOR_TIER}
+        declared = upstream["tier"]
+        failures = upstream.get("failures", 0)  # 只有标记携带失败计数，信封不带
+        # 升档：上游声明 L1 且已失败至少一次 → 按 L2 路由；之后照常过 floor。
+        routed = "L2" if declared == "L1" and failures >= 1 else declared
+        if floor and UPSTREAM_TIERS.index(routed) < UPSTREAM_TIERS.index(FLOOR_TIER):
+            # conflict 记的是上游声明的档，不是升档后的档。
+            tier_conflict = {"upstream": declared, "floor": FLOOR_TIER}
+            effective = FLOOR_TIER
         else:
-            required = list(TIER_REQUIREMENTS[upstream["tier"]])
+            required = list(TIER_REQUIREMENTS[routed])
             tier_source = "upstream"
+            effective = routed
+        # 升档只升不降：不低于声明档，也不低于 floor。
+        if (UPSTREAM_TIERS.index(effective) < UPSTREAM_TIERS.index(declared)
+                or (floor and UPSTREAM_TIERS.index(effective) < UPSTREAM_TIERS.index(FLOOR_TIER))):
+            raise ValueError("tier 单调性被破坏")
+        if routed != declared:
+            escalation = {"from": declared, "to": effective, "consecutive_failures": failures}
+        # 收回：以声明档为准（即使 floor 把有效档抬到 L3，也宁可多收回）。只记录，不改动作；deny 属 Task 20。
+        if declared == "L2" and failures >= 2:
+            reclaim = {"tier": "L2", "consecutive_failures": failures}
     if requested.get("pinned") is True:
         tier_source = "pin"
     candidates = catalog_candidates(cfg, host)
@@ -365,6 +381,10 @@ def _route(request, cfg):
             "upstream_tier": upstream, "tier_source": tier_source}
     if tier_conflict is not None:
         base["tier_conflict"] = tier_conflict
+    if escalation is not None:
+        base["escalation"] = escalation
+    if reclaim is not None:
+        base["reclaim"] = reclaim
     if not eligible:
         return dict(base, action="unsupported", target=None, recommended=None,
                     fallback="没有满足需求的自动候选")

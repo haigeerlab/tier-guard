@@ -568,11 +568,11 @@ M = [
      '''version != 2''', "killed"),
     # ── Task 17：pin > floor > tier > 推断，tier_conflict ──
     ("tier17: 上游 L3 在 floor 下也记成冲突（< 改成 <=）", RD, RTC,
-     '''UPSTREAM_TIERS.index(upstream["tier"]) < UPSTREAM_TIERS.index(FLOOR_TIER)''',
-     '''UPSTREAM_TIERS.index(upstream["tier"]) <= UPSTREAM_TIERS.index(FLOOR_TIER)''', "killed"),
+     '''UPSTREAM_TIERS.index(routed) < UPSTREAM_TIERS.index(FLOOR_TIER)''',
+     '''UPSTREAM_TIERS.index(routed) <= UPSTREAM_TIERS.index(FLOOR_TIER)''', "killed"),
     ("tier17: floor 比较写反（上游 L1 压穿 floor）", RD, RTC,
-     '''UPSTREAM_TIERS.index(upstream["tier"]) < UPSTREAM_TIERS.index(FLOOR_TIER)''',
-     '''UPSTREAM_TIERS.index(upstream["tier"]) > UPSTREAM_TIERS.index(FLOOR_TIER)''', "killed"),
+     '''UPSTREAM_TIERS.index(routed) < UPSTREAM_TIERS.index(FLOOR_TIER)''',
+     '''UPSTREAM_TIERS.index(routed) > UPSTREAM_TIERS.index(FLOOR_TIER)''', "killed"),
     ("tier17: 没有 floor 也按冲突处理（上游不能低于推断）", RD, RTC,
      '''if floor and UPSTREAM_TIERS.index''',
      '''if UPSTREAM_TIERS.index''', "killed"),
@@ -619,15 +619,15 @@ def _requirements''', "killed"),
      '''tier_source = "floor" if floor else "inferred"''',
      '''tier_source = "inferred"''', "killed"),
     ("tier17: 冲突时来源标成 upstream", RD, RTC,
-     '''tier_conflict = {"upstream": upstream["tier"], "floor": FLOOR_TIER}
+     '''tier_conflict = {"upstream": declared, "floor": FLOOR_TIER}
 ''',
-     '''tier_conflict = {"upstream": upstream["tier"], "floor": FLOOR_TIER}
+     '''tier_conflict = {"upstream": declared, "floor": FLOOR_TIER}
             tier_source = "upstream"
 ''', "killed"),
     ("tier17: 采纳上游 tier 后来源仍写 inferred", RD, RTC,
-     '''required = list(TIER_REQUIREMENTS[upstream["tier"]])
+     '''required = list(TIER_REQUIREMENTS[routed])
             tier_source = "upstream"''',
-     '''required = list(TIER_REQUIREMENTS[upstream["tier"]])
+     '''required = list(TIER_REQUIREMENTS[routed])
             tier_source = "inferred"''', "killed"),
     ("tier17: 冲突记录里 floor 档写错", RD, RTC,
      '''"floor": FLOOR_TIER}''',
@@ -662,6 +662,47 @@ def _requirements''', "killed"),
         "host": "claude-code",''',
      '''"task": "",
         "host": "claude-code",''', "killed"),
+    # ── Task 19：失败计数 → 升档与收回记录 ──
+    ("tier19: 升档阈值上移一位（失败 1 次不升档）", RD, RTC,
+     '''routed = "L2" if declared == "L1" and failures >= 1 else declared''',
+     '''routed = "L2" if declared == "L1" and failures >= 2 else declared''', "killed"),
+    ("tier19: 升档阈值下移一位（失败 0 次也升档）", RD, RTC,
+     '''routed = "L2" if declared == "L1" and failures >= 1 else declared''',
+     '''routed = "L2" if declared == "L1" and failures >= 0 else declared''', "killed"),
+    ("tier19: n=0 / 未升档也写 escalation", RD, RTC,
+     '''if routed != declared:''',
+     '''if True:''', "killed"),
+    ("tier19: escalation.to 用 floor 之前的档", RD, RTC,
+     '''"to": effective, "consecutive_failures": failures}''',
+     '''"to": routed, "consecutive_failures": failures}''', "killed"),
+    ("tier19: tier_conflict 记升档后的档而不是声明档", RD, RTC,
+     '''tier_conflict = {"upstream": declared, "floor": FLOOR_TIER}''',
+     '''tier_conflict = {"upstream": routed, "floor": FLOOR_TIER}''', "killed"),
+    ("tier19: 收回按有效档而不是声明档判定", RD, RTC,
+     '''if declared == "L2" and failures >= 2:''',
+     '''if effective == "L2" and failures >= 2:''', "killed"),
+    ("tier19: 收回阈值上移一位（失败 2 次不收回）", RD, RTC,
+     '''if declared == "L2" and failures >= 2:''',
+     '''if declared == "L2" and failures >= 3:''', "killed"),
+    ("tier19: 收回阈值下移一位（失败 1 次就收回）", RD, RTC,
+     '''if declared == "L2" and failures >= 2:''',
+     '''if declared == "L2" and failures >= 1:''', "killed"),
+    ("tier19: 收回改动了路由目标", RD, RTC,
+     '''reclaim = {"tier": "L2", "consecutive_failures": failures}''',
+     '''reclaim = {"tier": "L2", "consecutive_failures": failures}
+            required = list(TIER_REQUIREMENTS["L3"])''', "killed"),
+    ("tier19: 升档也施加在 L2 上（L2 失败 1 次升到 L3）", RD, RTC,
+     '''routed = "L2" if declared == "L1" and failures >= 1 else declared''',
+     '''routed = "L3" if declared == "L2" and failures >= 1 else ("L2" if declared == "L1" and failures >= 1 else declared)''', "killed"),
+    ("tier19: 升档施加在 L3 上（把档位压低，单调性被破坏）", RD, RTC,
+     '''routed = "L2" if declared == "L1" and failures >= 1 else declared''',
+     '''routed = "L2" if failures >= 1 else declared''', "killed"),
+    ("tier19: escalation 不记失败计数", RD, RTC,
+     '''"to": effective, "consecutive_failures": failures}''',
+     '''"to": effective}''', "killed"),
+    ("tier19: reclaim 不记失败计数", RD, RTC,
+     '''reclaim = {"tier": "L2", "consecutive_failures": failures}''',
+     '''reclaim = {"tier": "L2"}''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")

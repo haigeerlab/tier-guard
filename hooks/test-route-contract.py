@@ -528,6 +528,65 @@ def main():
     for field in ("action", "target", "recommended", "requirements", "confidence", "fallback"):
         assert forged[field] == irrev_plain[field], (field, forged, irrev_plain)
 
+    # ── Task 19：失败计数 → 升档（L1→L2）与收回记录（L2 ≥ 2 次） ──
+    def fmark(tier, failures=None, reason=None):
+        body = f"tier={tier}" + (f" failures={failures}" if failures is not None else "") \
+            + (f" reason={reason}" if reason is not None else "")
+        return f"\n<!-- tier-guard: {body} -->"
+
+    esc = tier_route(READONLY + fmark("L1", 1))
+    assert esc["target"]["id"] == "codex-terra-high", esc
+    assert esc["escalation"] == {"from": "L1", "to": "L2", "consecutive_failures": 1}, esc
+    assert esc["tier_source"] == "upstream" and "tier_conflict" not in esc and "reclaim" not in esc, esc
+
+    assert "escalation" not in tier_route(READONLY + fmark("L1", 0))
+    assert tier_route(READONLY + fmark("L1", 0))["target"]["id"] == "codex-luna-medium"
+    assert "escalation" not in tier_route(READONLY + fmark("L1"))
+    assert "escalation" not in tier_route(READONLY, envelope(2, "L1"))  # 信封不携带失败计数
+
+    esc_floor = tier_route(IRREV + fmark("L1", 1))
+    assert esc_floor["target"]["id"] == "codex-terra-xhigh", esc_floor
+    assert esc_floor["escalation"] == {"from": "L1", "to": "L3", "consecutive_failures": 1}, esc_floor
+    assert esc_floor["tier_conflict"] == {"upstream": "L1", "floor": "L3"}, esc_floor
+    assert esc_floor["tier_source"] == "floor", esc_floor
+
+    l2_one = tier_route(BOUNDED + fmark("L2", 1))
+    assert "escalation" not in l2_one and "reclaim" not in l2_one, l2_one
+    l2_zero = tier_route(BOUNDED + fmark("L2", 0))
+    assert "escalation" not in l2_zero and "reclaim" not in l2_zero, l2_zero
+
+    l2_two = tier_route(BOUNDED + fmark("L2", 2))
+    assert l2_two["reclaim"] == {"tier": "L2", "consecutive_failures": 2}, l2_two
+    assert "escalation" not in l2_two, l2_two
+    for field in ("action", "target", "recommended", "requirements", "confidence", "tier_source", "fallback"):
+        assert l2_two[field] == l2_one[field], (field, l2_two, l2_one)
+    assert tier_route(BOUNDED + fmark("L2", 5))["reclaim"] == {"tier": "L2", "consecutive_failures": 5}
+    assert tier_route(IRREV + fmark("L2", 2))["reclaim"] == {"tier": "L2", "consecutive_failures": 2}  # 以声明档为准
+    assert "reclaim" not in tier_route(READONLY + fmark("L1", 3))
+
+    l3_many = tier_route(READONLY + fmark("L3", 3))
+    assert "escalation" not in l3_many and "reclaim" not in l3_many, l3_many
+
+    pinned_esc = tier_route_signals(READONLY + fmark("L1", 1), {}, pinned=True)
+    assert pinned_esc["escalation"] == {"from": "L1", "to": "L2", "consecutive_failures": 1}, pinned_esc
+    assert pinned_esc["tier_source"] == "pin" and pinned_esc["target"] is None, pinned_esc
+    pinned_reclaim = tier_route_signals(BOUNDED + fmark("L2", 2), {}, pinned=True)
+    assert pinned_reclaim["reclaim"] == {"tier": "L2", "consecutive_failures": 2} and pinned_reclaim["tier_source"] == "pin", pinned_reclaim
+
+    esc_secret = tier_route(READONLY + fmark("L1", 1, "secret-reason-19b7"))
+    assert "secret-reason-19b7" not in json.dumps(esc_secret, ensure_ascii=False), esc_secret
+    assert esc_secret["fallback"] is None and "escalation" in esc_secret, esc_secret
+    assert esc_floor["fallback"] is None and l2_two["fallback"] is None
+
+    # 单调性：任何已接受的 tier × failures × 是否命中 floor，有效档都不低于声明档与 floor
+    for task, floored in ((READONLY, False), (IRREV, True)):
+        for tier in ("L1", "L2", "L3"):
+            for failures in (0, 1, 2, 7):
+                decision = tier_route(task + fmark(tier, failures))
+                assert decision["fallback"] is None, decision
+                got = next(t for t in ("L1", "L2", "L3") if rd.TIER_REQUIREMENTS[t] == decision["requirements"])
+                assert got >= tier and (not floored or got == "L3"), (task, tier, failures, decision)
+
     print("route contract: OK")
 
 
