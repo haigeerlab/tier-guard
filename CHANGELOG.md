@@ -3,6 +3,39 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Under `auto`, `fork` and `plugin:name` agents were rewritten even though
+  tier-guard cannot tell whether they are pinned (a plugin agent's
+  frontmatter may set a model). They are now left alone, as the spec says.
+- A task with both a read-only phrase and an implementation phrase ("do a
+  read-only review first, then implement the fix") was routed as read-only,
+  to the cheapest model. It now routes as unknown, which is conservative.
+- In the upstream tier marker, `failures` written after `reason` was
+  swallowed by `reason` and silently lost, so the reclaim never fired. A
+  `failures=` inside `reason` now makes the marker invalid.
+- `/tier-report` counted host-internal subagents (no `agent_type`, linked
+  to no dispatch) as dispatches. On a real log that showed 86% of
+  dispatches as unobserved and 2653 guard fallbacks; they now get their own
+  line, and the same log reads 0% missing and 0 fallbacks.
+- `/tier-doctor` could show a legacy mode such as `dry-run` that the hooks
+  ignore; it now shows the mode the hooks actually use.
+- `off` set through `/tier-mode` still logged routes that fell back
+  without a profile. It now logs nothing.
+
+### Changed
+
+- The log no longer stores the Agent `description` or the Codex
+  `task_name` as text, only their length and SHA-256, the same as the
+  prompt.
+- `/tier-label` says it only labels v1 history records and refuses v2
+  records with that explanation.
+- README rewritten: the problem, the measured verdict that dispatch mostly
+  does not save money, design principles, install on both hosts, modes,
+  commands, architecture, and the spec-guard tier marker.
+
 ## [0.2.6] - 2026-10-06
 
 ### Added

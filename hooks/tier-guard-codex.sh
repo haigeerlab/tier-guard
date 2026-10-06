@@ -1,8 +1,8 @@
 #!/bin/bash
 # Codex 薄壳入口：PreToolUse(spawn_agent)。
 #
-# 铁律同 Claude 侧：**任何情况下退出 0**；stdout 只可能出现 codex_hook.py 在 mode=auto 下给的
-# 输出（Codex 编码：updatedInput 配 permissionDecision:"allow"）。其余一律空。
+# 铁律同 Claude 侧：**任何情况下退出 0**；stdout 只可能是 codex_hook.py 给的 hook 输出（Codex 编码：
+# updatedInput 配 permissionDecision:"allow"；提醒；guard / auto 的 deny）。其余一律空。
 set -uo pipefail
 PAYLOAD="$(cat)" || exit 0
 

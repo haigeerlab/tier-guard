@@ -1,8 +1,8 @@
 #!/bin/bash
 # Claude 薄壳入口。PreToolUse(Agent) 判档；PreToolUse(Bash) 记 Codex 派活的「建议 vs 实际」。
 #
-# 铁律：**任何情况下退出 0**。stdout 只可能出现 claude_hook.py 在 mode=auto 下给的
-# updatedInput；其余一律空 —— 空 stdout + 退出 0 等于没装这个 hook。
+# 铁律：**任何情况下退出 0**。stdout 只可能是 claude_hook.py 给的 hook 输出（auto 的 updatedInput、
+# 预路由提醒、guard / auto 的 deny）；其余一律空 —— 空 stdout + 退出 0 等于没装这个 hook。
 # 守卫坏了（python 不在、配置读不到、payload 怪）不能变成干活坏了。
 set -uo pipefail
 EVENT="${1:-agent}"

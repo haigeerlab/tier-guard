@@ -109,7 +109,8 @@
   - 新断言先红后绿；变异 6 条全抓到。本机真实日志：派活 474 次、未写 transcript 0%；宿主内部 2906 次单列；守卫兜底 2653 → 0
 - [x] Task 30 · 隐私与 tier-label：`description` / `task_name` 只记长度与 sha256；`/tier-label` 标明仅限 v1 记录
   - v1 / v2 写日志处一并改；v1 重派推断改比 sha256（兼容旧记录原文）；新断言先红后绿；变异 4 条全抓到，打断的 tier18 锚点已更新
-- [ ] Task 31 · 文档整理：README 重写（场景、价值与设计理念、安装、用法、命令、架构、与 spec-guard 配合）；过时注释与说明
+- [x] Task 31 · 文档整理：README 重写（场景、价值与设计理念、安装、用法、命令、架构、与 spec-guard 配合）；过时注释与说明
+  - 另修：四个 hook 头注释（guard 也会 deny）、SKILL.md（auto 只能环境变量临时开、标记字段顺序、Desktop 旧型号标为历史证据）、CHANGELOG Unreleased；安装命令按两边 CLI `--help` 核对
 - [ ] Checkpoint · Phase 9（validate + 完整变异测试；推送与是否发 0.2.7 先问）
 
 ## 待补宿主验收（不改变生产配置）

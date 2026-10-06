@@ -8,12 +8,12 @@
   3. 按宿主编码输出。Codex 薄壳（Task 4b）的编码不同，不共用这份
 
 三个事件：
-  agent          PreToolUse(Agent)：路由 + 主代理预路由提醒（Task 10）。v2 stdout 在三种
-                 情况下有内容：mode=auto 且未 pin、需要应用目标时（updatedInput）；宿主
-                 `dispatch_nudge=true` 且未 pin 时的提醒（additionalContext，audit/auto 皆可能
-                 出现，可能与 updatedInput 合并在同一个 hookSpecificOutput 里）；auto 下同一
-                 session 第一次未 pin 派活的 deny（permissionDecision，此时绝不带 updatedInput）。
-                 v1 raise 路径仅为兼容
+  agent          PreToolUse(Agent)：路由 + 主代理预路由提醒（Task 10）+ 收回（Task 20）。v2 stdout
+                 在这些情况下有内容：mode=auto、能确认未 pin、需要应用目标时（updatedInput；fork 与
+                 插件 agent 判不出 pin，不改写）；宿主 `dispatch_nudge=true` 且未 pin 时的提醒
+                 （additionalContext，audit/guard/auto 皆可能出现，可能与 updatedInput 合并）；
+                 guard（默认）/ auto 下同一 session 第一次未 pin 派活的 deny，以及 L2 第二次失败的
+                 收回 deny（permissionDecision，此时绝不带 updatedInput）。v1 raise 路径仅为兼容
   bash           PreToolUse(Bash) 且命令里有 codex-exec.sh：只记「建议 vs 实际」，任何
                  mode 下都不输出（Task 4a：提议式，绝不改用户批准过的派活命令）
   subagent-stop  SubagentStop：记实际执行模型（读子代理 transcript）与是否升级触发。

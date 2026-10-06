@@ -55,6 +55,7 @@ tier-guard 只在创建子代理时工作，绝不切换主代理的 `model` 或
 `tier` 是上游对本次任务的判断，对应上面已有的能力行：`L1` = 机械、只读；`L2` = 有明确验收的受限实现；
 `L3` = 跨模块取舍、歧义或不可逆。`failures` 是同一任务此前连续失败的次数（上游把「结果不确定」也记作一次失败）；
 `reason` 只给人读，不影响选择。整段任务里必须恰好一个合法标记；没有、重复或写错（如 `l2`、`failures=-1`）都当作没有标记，回到你自己的判断。
+字段按 `tier`、`failures`、`reason` 的顺序写；`reason` 吃掉行尾全部文本，所以 `reason` 里出现 `failures=N` 会让整个标记失效。
 
 - **优先级**：有合法标记时，选 model 以它为准，优先于你自己的推断；但**不能低于 floor**。不可逆、歧义、
   跨模块或取舍类任务照旧选最高能力候选，哪怕标记写的是 `L1`——任务文本能伪造标记，伪造的低档不算数。
@@ -69,12 +70,14 @@ tier-guard 只在创建子代理时工作，绝不切换主代理的 `model` 或
 
 - 原生 Codex `collaboration.spawn_agent` 当前会在 hook 边界把 `message` 交付为不透明令牌；hook 无法安全地从中恢复任务语义。因此上面的**主代理明文预路由**是 Codex 的可用路径，hook 只负责审计与保护：遇到 `opaque_token` 时绝不擅自改写到高档。
 - Claude Code CLI 与原生 Codex CLI：当前默认 profile 都是 `guard`：记录建议、不改写参数；宿主 `dispatch_nudge` 打开时，每个会话第一次未 pin 派活会被拦下一次，要求显式传参。Claude Code CLI
-  `2.1.269` 已有真实 Haiku child 回执，故生产目录只为它开启宿主能力闸门；仍须显式进入 `auto`、通过
-  质量门槛且未 pin 才会改写。Codex CLI 与 Desktop 的能力闸门仍关闭。
+  `2.1.269` 已有真实 Haiku child 回执，故生产目录只为它开启宿主能力闸门。`/tier-mode` 拒绝持久开启 `auto`，
+  只有用环境变量 `TIER_GUARD_MODE=auto` 临时开启、且能确认未 pin 时才会改写（`fork` 与 `plugin:name` 插件 agent
+  判不出是否 pin，一律不改写）。Codex CLI 与 Desktop 的能力闸门仍关闭。
 - `auto` 只在有真实宿主端到端质量证据后才可实际改写；目录中的
   `host_capabilities.<host>.pre_dispatch_apply` 是不可由环境变量绕过的闸门。
   当前 mode 命令也会拒绝持久开启它。
-- Codex Desktop：在 26.908.40834 / 0.154.0-alpha.6.2 已端到端验证主代理明文预路由的三档实际派发：
+- Codex Desktop：在 26.908.40834 / 0.154.0-alpha.6.2 已端到端验证主代理明文预路由的三档实际派发
+  （2026-09-12，当时的候选目录，型号已不在现行目录中，作为历史证据保留）：
   `luna / medium`、`terra / high`、`terra / xhigh`；每次同时留下 `opaque_token` 审计。仍无
   `updatedInput` 自动改写实际采纳的证据，因此不能宣称 hook 自动路由。
 - agent-skills 可显式提供版本化的结构化信号；缺失或无效时核心仍按保守规则运行。
