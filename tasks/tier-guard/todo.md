@@ -112,7 +112,7 @@
 - [x] Task 31 · 文档整理：README 重写（场景、价值与设计理念、安装、用法、命令、架构、与 spec-guard 配合）；过时注释与说明
   - 另修：四个 hook 头注释（guard 也会 deny）、SKILL.md（auto 只能环境变量临时开、标记字段顺序、Desktop 旧型号标为历史证据）、CHANGELOG Unreleased；安装命令按两边 CLI `--help` 核对
 - [x] 出厂默认 mode 由 guard 改为 off（spec-guard 会话提出，2026-10-06 用户确认）：目录、规约、plan 决策表、CLAUDE.md、README、命令、skill、报告文案与依赖默认值的测试同步；off 下 tier-routing skill 照常可用
-- [ ] Checkpoint · Phase 9（validate + 完整变异测试；推送与是否发 0.2.7 先问）
+- [x] Checkpoint · Phase 9（2026-10-06，0.2.7）：validate 通过；最终代码完整变异 274 / 1 / 0，那 1 条是「去掉 off 快速路径」在高负载下被性能计时断言（auto 模式、与该变异无关）误杀，手工单跑 147 / 0 仍存活，等价裁决成立。首轮暴露的「SubagentStop off 判断」因 D7 变为等价，已改标并写明原因
 
 ## 待补宿主验收（不改变生产配置）
 
