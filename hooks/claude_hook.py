@@ -262,7 +262,8 @@ def on_agent_v2(payload, cfg, mode, catalog_identity):
 
     out = None
     target = d.get("target") or {}
-    if (mode == "auto" and host_pre_dispatch_apply
+    # nudge_pin 为 None（fork / 插件 agent）即判不出是否 pin：不提醒也不改写
+    if (mode == "auto" and host_pre_dispatch_apply and nudge_pin is False
             and d.get("action") in ("select", "lower", "raise")
             and target.get("model") and not d.get("fallback")):
         new_ti = dict(ti)

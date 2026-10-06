@@ -616,6 +616,41 @@ Task 23. Skill-sync check passes.
 Same 4–6 task module on Claude and Codex, dispatch vs no dispatch; spec-guard's cost report and tier-guard's logs must agree
 on tiers and models.
 
+### Phase 9: Closing review fixes and documentation (2026-10-06, user approved)
+
+Source: the closing review (independent read-only reviewer plus my own data check); D1, D2, D3 and D6 were reproduced
+before planning. Settled with the user: `/tier-label` stays but is labelled v1-only; Agent `description` and Codex
+`task_name` are logged as length + SHA-256 only; "删除" / "delete" are **not** added to the irreversible words; the
+duplicated hook sequence and the v1 code stay as they are.
+
+#### Task 28: Routing fixes (D1, D2, D3)
+- D1: under `auto`, fork and `plugin:name` agents are rewritten (reproduced: both got `updatedInput.model`). Skip the rewrite
+  when the pin cannot be determined, in the Claude shell; v2 auto assertions for fork and plugin agents.
+- D2: a task with both read-only and implementation markers is classified read-only (haiku). Return `unknown` instead.
+- D3: `failures` written after `reason` is silently dropped. A `failures=N` token inside `reason` makes the marker invalid.
+- Verify: selftest, both shell suites, new assertions red before the fix, mutants for each.
+
+#### Task 29: Report and mode fixes (R1, R2, D4, D7)
+- R1/R2: SubagentStop records without `agent_type` that link to no dispatch are host-internal. Count them on their own line;
+  exclude them from the transcript-coverage ratio and from the fallback count.
+- D4: `/tier-doctor` reads the mode with the same allowed profiles as the hooks.
+- D7: `off` from the mode file logs nothing, including fallback paths.
+- Verify: commands and observe suites, real-data report shows the split, mutants.
+
+#### Task 30: Privacy and tier-label (spec change)
+- Log Agent `description` and Codex `task_name` as `*_chars` + `*_sha256`; the report stops showing them as text.
+- `/tier-label` description and output say it only labels v1 history records.
+- Verify: an assertion that neither raw value appears in the log; mutants.
+
+#### Task 31: Documentation pass
+- README rewritten for a first-time reader: the problem, value and design ideas (including the measured verdict that
+  dispatch mostly does not save money), install on Claude Code and Codex, modes, commands and skill, architecture,
+  working with spec-guard (tier marker, cost report).
+- Stale lines: hook header comments ("only auto denies"), SKILL.md quality-gate wording and old model names, command
+  descriptions, CHANGELOG Unreleased.
+- Research docs are historical evidence and are not rewritten.
+- Verify: validate, skill-sync check, full mutation run.
+
 ## Risks and mitigations
 
 | Risk | Impact | Mitigation |
@@ -634,3 +669,5 @@ on tiers and models.
 Tasks 1 → 2 are sequential. Tasks 3, 4 and 5 may proceed after Task 2 but all touch the route contract and should be reviewed serially in this single working tree. Task 6 follows their settled record shape. Tasks 7 and 8 come last because they must validate the code actually installed in each host, not just repository tests.
 
 Phase 7 is sequential: Tasks 16 → 17 → 18 share the decision shape, then the checkpoint settles D1 and D3 before Tasks 19 → 20. Task 21 follows the final behaviour and Task 22 validates the code as it runs in the host.
+
+Phase 9: Tasks 28 → 29 → 30 touch the hooks and are done serially; Task 31 comes last so the docs describe the final behaviour.

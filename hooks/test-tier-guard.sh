@@ -303,6 +303,13 @@ check "frontmatter 反：inherit 不记成 agent_model" \
 runv2 auto "$(mk $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - defaulter)"
 check "frontmatter 反：model=default 同样不算 pin" \
   "$(jsonq 'o["hookSpecificOutput"]["updatedInput"]["model"] == "haiku"')"
+# fork 恒继承父代理、插件 agent 的 frontmatter 读不到：判不出是否 pin，auto 也不改写（spec「判不出，不提醒也不改写」）
+runv2 auto "$(mk $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - fork)"
+check "v2 auto：fork 判不出 pin → 不改写" "$(yn [ -z "${OUT}" ])"
+check "v2 auto：fork 记 applied=false" "$(lastlog 'r["routing_version"] == 2 and r["applied"] is False')"
+runv2 auto "$(mk $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - myplug:worker)"
+check "v2 auto：插件 agent 判不出 pin → 不改写" "$(yn [ -z "${OUT}" ])"
+check "v2 auto：插件 agent 记 applied=false" "$(lastlog 'r["routing_version"] == 2 and r["applied"] is False')"
 
 # ── 宿主承认的第三个 pin 来源：CLAUDE_CODE_SUBAGENT_MODEL / _FORCE ──
 # Claude Code 2.1.289 读这两个变量决定子代理模型（前者是默认，后者强制并让 model 参数被忽略）。

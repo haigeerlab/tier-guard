@@ -99,6 +99,17 @@
 - [x] 补跑完整变异测试（2026-10-06，HEAD `a8e3ce0`，负载均值约 8–14）：符合预期 257 / 不符 0 / 锚点失效 0（抓到 252、如期等价 5），
   7 组基线全绿。补上 `439dd3f` 记下的缺口：当时 `test-tier-guard.sh` 基线因高负载下性能断言失败，其 54 个变异体未跑，这次全部抓到
 
+## Phase 9 · 收尾评审修复与文档整理（2026-10-06 用户批准）
+
+> 详见 plan「Phase 9」。评审结论：总体约 3.6 / 5，默认 guard 路径可靠，问题集中在 auto、报告口径与文档。
+
+- [x] Task 28 · 路由修复：auto 不改写 fork / 插件 agent（D1）；只读 + 实现同现归 unknown（D2）；`reason` 里出现 `failures=` 判非法（D3）
+  - 新断言先红后绿（Claude 薄壳 4 条、契约 D2/D3）；变异 6 条全抓到，改动打断的 1 条旧锚点已更新
+- [ ] Task 29 · 报告与模式修复：宿主内部子代理单独计数（R1/R2）；`/tier-doctor` 模式与 hook 一致（D4）；off 一律不记（D7）
+- [ ] Task 30 · 隐私与 tier-label：`description` / `task_name` 只记长度与 sha256；`/tier-label` 标明仅限 v1 记录
+- [ ] Task 31 · 文档整理：README 重写（场景、价值与设计理念、安装、用法、命令、架构、与 spec-guard 配合）；过时注释与说明
+- [ ] Checkpoint · Phase 9（validate + 完整变异测试；推送与是否发 0.2.7 先问）
+
 ## 待补宿主验收（不改变生产配置）
 
 - [x] Codex CLI 主代理明文预路由：在真实交互式 Terminal/TUI 中复现 Desktop 的三档 child 回执。

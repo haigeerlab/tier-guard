@@ -412,6 +412,22 @@ def main():
     assert with_failures["failures"] == 2 and with_failures["tier"] == "L1", with_failures
     assert "failures" not in rd.parse_tier_marker("<!-- tier-guard: tier=L1 -->")
     assert rd.parse_tier_marker("<!-- tier-guard: tier=L1 failures=0 -->")["failures"] == 0
+    # Phase 9 D3：写在 reason 之后的 failures 会被 reason 吃掉；与其悄悄丢掉（错过收回），不如整个标记判非法
+    assert marker_error("<!-- tier-guard: tier=L2 reason=a failures=2 -->") == ("unavailable", "failures-in-reason")
+    assert marker_error("<!-- tier-guard: tier=L2 reason=上次 failures=1 -->") == ("unavailable", "failures-in-reason")
+    assert marker_error("<!-- tier-guard: tier=L2 reason=no failures yet -->")[0] == "accepted"
+    assert marker_error("<!-- tier-guard: tier=L2 failures=1 reason=retry -->")[0] == "accepted"
+
+    # Phase 9 D2：只读标记与实现标记同现时不按只读处理（用生产目录的词表复现评审给出的两句）
+    prod = rd.load_catalog()
+    for mixed in ("先只读代码库了解结构，然后实现缓存层并修改 cache.py。",
+                  "Do a read-only review first, then implement the fix in auth.py."):
+        sig = rd._text_signals(mixed, prod)
+        assert sig["side_effect"] != "read_only" and sig["decision_load"] == "unknown", (mixed, sig)
+        routed = rd.route({"task": mixed, "host": "claude-code", "requested": {"pinned": False}, "signals": {}}, prod)
+        assert routed["requirements"] != ["mechanical", "read_only"], (mixed, routed)
+    pure = rd._text_signals("只读审查配置，禁止修改任何文件。", prod)
+    assert pure["side_effect"] == "read_only" and pure["decision_load"] == "mechanical", pure
 
     SECRET_REASON = "按 spec 第3节实现 secret-reason-9f3a"
     with_reason = tier_route(READONLY + f"\n<!-- tier-guard: tier=L2 failures=1 reason={SECRET_REASON} -->")

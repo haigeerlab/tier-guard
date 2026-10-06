@@ -375,8 +375,8 @@ M = [
      '''        new_ti["model"] = target["model"]\n        out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": new_ti}}''',
      '''        new_ti["model"] = target["model"]\n        out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": new_ti}}''', "killed"),
     ("shell: updatedInput 只剩 model（其余字段丢了）", CH, TTG,
-     '''    if (mode == "auto" and host_pre_dispatch_apply\n            and d.get("action") in ("select", "lower", "raise")\n            and target.get("model") and not d.get("fallback")):\n        new_ti = dict(ti)''',
-     '''    if (mode == "auto" and host_pre_dispatch_apply\n            and d.get("action") in ("select", "lower", "raise")\n            and target.get("model") and not d.get("fallback")):\n        new_ti = {}''', "killed"),
+     '''    if (mode == "auto" and host_pre_dispatch_apply and nudge_pin is False\n            and d.get("action") in ("select", "lower", "raise")\n            and target.get("model") and not d.get("fallback")):\n        new_ti = dict(ti)''',
+     '''    if (mode == "auto" and host_pre_dispatch_apply and nudge_pin is False\n            and d.get("action") in ("select", "lower", "raise")\n            and target.get("model") and not d.get("fallback")):\n        new_ti = {}''', "killed"),
     ("shell: 日志记 prompt 原文", CH, TTG,
      '''            "prompt_chars": len(prompt),''', '''            "prompt_chars": len(prompt), "prompt": prompt,''', "killed"),
     ("shell: agent 目录顺序反了（用户目录压过项目）", CH, TTG,
@@ -877,6 +877,27 @@ def _requirements''', "killed"),
         out.append(f"另有''',
      '''    if True:
         out.append(f"另有''', "killed"),
+    # Phase 9 Task 28
+    ("phase9 D1: auto 改写不看 nudge_pin（fork / 插件 agent 被改写）", CH, TTG,
+     '''host_pre_dispatch_apply and nudge_pin is False''',
+     '''host_pre_dispatch_apply''', "killed"),
+    ("phase9 D1: 判不出 pin 也当未 pin（None 被放行改写）", CH, TTG,
+     '''host_pre_dispatch_apply and nudge_pin is False''',
+     '''host_pre_dispatch_apply and not nudge_pin''', "killed"),
+    ("phase9 D2: 只读与实现同现仍按只读", RD, RTC,
+     '''    if readonly and implementation:
+        # 「先只读''',
+     '''    if False:
+        # 「先只读''', "killed"),
+    ("phase9 D2: 同现时只清只读、保留实现（按实现而非 unknown）", RD, RTC,
+     '''        readonly = implementation = False''',
+     '''        readonly = False''', "killed"),
+    ("phase9 D3: reason 里的 failures= 不判非法（悄悄丢掉）", RD, RTC,
+     '''    if re.search(r"(?:^|\\s)failures=", reason):''',
+     '''    if False:''', "killed"),
+    ("phase9 D3: 「no failures yet」这类不带等号的也判非法", RD, RTC,
+     '''    if re.search(r"(?:^|\\s)failures=", reason):''',
+     '''    if "failures" in reason:''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")

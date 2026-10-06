@@ -164,6 +164,9 @@ def _text_signals(task, cfg):
     tradeoff = any(word.lower() in low for word in rules["tradeoff_words"])
     implementation = any(marker.lower() in low for marker in rules.get("implementation_markers", ()))
     bounded = any(marker.lower() in low for marker in rules.get("bounded_scope_markers", ()))
+    if readonly and implementation:
+        # 「先只读…再实现」：只读标记只是子串命中，不能盖过实现；两者都不认，按信息不足保守处理
+        readonly = implementation = False
     acceptance = any(line.lstrip(" \t-*#>").lower().startswith(
         tuple(marker.lower() for marker in rules["acceptance_markers"]))
         for line in task.splitlines())
@@ -237,6 +240,9 @@ def parse_tier_marker(task):
     if failures is not None and re.fullmatch(r"[0-9]+", failures) is None:
         return {"status": "unavailable", "error": "bad-failures"}
     reason = reason.strip() if reason is not None else ""
+    if re.search(r"(?:^|\s)failures=", reason):
+        # 写在 reason 之后的 failures 会被 reason 吃掉；悄悄丢掉会错过收回，整个标记判非法
+        return {"status": "unavailable", "error": "failures-in-reason"}
     result = {"status": "accepted", "source": "marker", "tier": tier, "reason_present": bool(reason)}
     if failures is not None:
         result["failures"] = int(failures)
