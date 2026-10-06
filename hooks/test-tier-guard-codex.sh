@@ -358,7 +358,7 @@ check "nudge：同一 session A 第二次未 pin → 不再 deny，只提醒（�
   "$(nudgeq '"permissionDecision" not in o["hookSpecificOutput"] and "updatedInput" not in o["hookSpecificOutput"] and remind_ok(o["hookSpecificOutput"]["additionalContext"])')"
 check "nudge：session A 第二次记 nudge=reminded" "$(lastnudgelog 'r["nudge"] == "reminded"')"
 
-# ── guard（默认 profile，Task 14）：merged 目录 pre_dispatch_apply=true 也只拦一次 / 提醒，从不改写 ──
+# ── guard（Task 14；2026-10-06 起出厂默认为 off）：merged 目录 pre_dispatch_apply=true 也只拦一次 / 提醒，从不改写 ──
 runnudgemerged guard "$(spn G1 "${NUDGE_TASK}" - - all)"
 check "guard：merged 目录 + 新会话未 pin → deny，不带 updatedInput" \
   "$(nudgeq 'o["hookSpecificOutput"]["permissionDecision"] == "deny" and deny_ok(o["hookSpecificOutput"]["permissionDecisionReason"]) and "updatedInput" not in o["hookSpecificOutput"]' "${V2_NUDGE_MERGED_CONFIG}")"

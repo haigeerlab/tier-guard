@@ -9,7 +9,7 @@
      Claude 侧不带 allow，所以两边的输出代码不共用。stdout 不只在 auto 改写参数时才有内容：
      v2 还会在宿主 `dispatch_nudge=true` 时输出主代理预路由提醒（Task 11）——
      audit/guard/auto 下的 additionalContext（可能与 updatedInput 合并在同一个 hookSpecificOutput 里），
-     以及 guard（默认）/ auto 下同一 session 第一次未 pin 派活的 deny（此时绝不带 updatedInput）。
+     以及 guard / auto 下同一 session 第一次未 pin 派活的 deny（此时绝不带 updatedInput）。
      生产目录里 Codex 的 dispatch_nudge 与 pre_dispatch_apply 都是关的，所以实际只记日志。
 
 旧 v1 兼容分支的起点档规则（默认 v2 不使用）：

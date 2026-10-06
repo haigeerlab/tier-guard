@@ -39,11 +39,11 @@ seen_ok() {
 }
 check "有记录：报告次数、最近时间与坏行数" "$(yn seen_ok)"
 
-# Phase 9 D4：模式文件里是 v2 不认的旧值时，hook 回退默认 guard；doctor 必须报同一个值
+# Phase 9 D4：模式文件里是 v2 不认的旧值时，hook 回退目录默认值（2026-10-06 起为 off）；doctor 必须报同一个值
 mkdir -p "${TMP}/legacy"; printf 'dry-run\n' > "${TMP}/legacy/mode"
 OUT="$(env -u TIER_GUARD_MODE HOME="${TMP}/home" python3 "${ROOT}/hooks/tier_doctor.py" --data "${TMP}/legacy")"
-legacy_ok() { has "${OUT}" "当前 mode：guard" && ! has "${OUT}" "当前 mode：dry-run"; }
-check "旧模式文件 dry-run：doctor 与 hook 一致报 guard" "$(yn legacy_ok)"
+legacy_ok() { has "${OUT}" "当前 mode：off" && ! has "${OUT}" "当前 mode：dry-run"; }
+check "旧模式文件 dry-run：doctor 与 hook 一致报目录默认值 off" "$(yn legacy_ok)"
 
 echo ""
 echo "  总计 ${PASS} 通过 / ${FAIL} 失败"

@@ -340,8 +340,8 @@ def main():
     enabled_provider["semantic_provider"] = {"mode": "remote"}
     expect_error(enabled_provider, "semantic_provider")
 
-    # Task 13：guard profile —— 生产目录默认 guard，且 guard 是合法的目录 mode
-    assert disk_catalog["mode"] == "guard", disk_catalog
+    # Task 13：guard 是合法的目录 mode；2026-10-06 用户确认生产目录出厂默认改为 off（派活大多不省钱）
+    assert disk_catalog["mode"] == "off", disk_catalog
     guard_catalog = copy.deepcopy(CATALOG)
     guard_catalog["mode"] = "guard"
     rd.check_config(guard_catalog)

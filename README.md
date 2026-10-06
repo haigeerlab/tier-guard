@@ -28,7 +28,9 @@ tier-guard 在子代理创建前插一道关：
 
 所以 tier-guard 的定位是：**不鼓励多派；真派了，别默认继承最贵的模型。**
 你出于上下文隔离或其他原因决定派活时，它保证子代理用的是合格的最便宜模型。
-如果你平时根本不派子代理，可以直接 `/tier-mode off`。
+
+也因此**出厂默认是 `off`**：hook 不拦截、不提醒、不记录，`tier-routing` skill 仍会在主代理派活前引导它选模型。
+你确实常派子代理、想让 hook 把关时，再用 `/tier-mode guard` 或 `/tier-mode audit` 打开。
 
 ## 设计理念
 
@@ -60,7 +62,7 @@ claude plugin install tier-guard@tier-guard
 **Codex CLI**
 
 ```bash
-codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.6
+codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.7
 ```
 
 ```bash
@@ -72,26 +74,27 @@ Codex 按 `--ref` 固定版本，升级时换成新的 tag 重新添加。第一
 
 ## 怎么用
 
-装上就生效，不需要额外操作。
+装上后是 `off`：只有 `tier-routing` skill 在工作（主代理派活前按候选目录选模型并写明），hook 什么都不做。
+要让 hook 把关，用 `/tier-mode` 切换。
 
 **四种模式**
 
 | 模式 | 行为 |
 |---|---|
-| `off` | 完全不工作：不判断、不记录、不改写。 |
+| `off`（出厂默认） | hook 完全不工作：不判断、不记录、不改写。`tier-routing` skill 照常可用。 |
 | `audit` | 只记录建议；没写明模型的派活会收到一条提醒，不拦截。 |
-| `guard`（默认） | 和 audit 一样不改参数；每个会话**第一次**没写明模型的派活会被拦一次，附上候选目录，主代理写明模型后重派，之后只提醒。 |
+| `guard` | 和 audit 一样不改参数；每个会话**第一次**没写明模型的派活会被拦一次，附上候选目录，主代理写明模型后重派，之后只提醒。 |
 | `auto` | 在 guard 之上，对没写明模型的派活直接改写参数。只在 Claude Code 上可用，且 `/tier-mode` 拒绝持久开启，只能用环境变量 `TIER_GUARD_MODE=auto` 临时打开。 |
 
-guard 的代价要知道：每个会话第一次派活被拦，主代理要重派，相当于多一轮主会话。不派活的人用 `off`，
-嫌拦烦的人用 `audit`。
+guard 的代价要知道：每个会话第一次没写明模型的派活被拦，主代理要重派，相当于多一轮主会话；
+Claude Code 自己派的 Explore 等子代理也会触发。所以它不是出厂默认，只建议常派子代理的人打开。
 
 **命令与 skill**
 
 | 名称 | 作用 |
 |---|---|
-| `/tier-mode [off\|audit\|guard]` | 查看或切换模式。不带参数时显示当前模式和它的来源。 |
-| `/tier-report` | 路由摘要：请求了什么、选了什么、实际跑在哪个模型上、拦截与提醒次数、子代理按模型的 token 用量。 |
+| `/tier-mode [off\|audit\|guard]` | 查看或切换模式（出厂 `off`）。不带参数时显示当前模式和它的来源。 |
+| `/tier-report` | 路由摘要（只有 guard / audit 下才有记录）：请求了什么、选了什么、实际跑在哪个模型上、拦截与提醒次数、子代理按模型的 token 用量。 |
 | `/tier-doctor` | 只读诊断：数据目录、日志、Codex hook 能观察到什么。 |
 | `/tier-label <id> <判定>` | 仅限 v1 历史记录的人工标注（误报 / 打回）。默认的 v2 路由用不到。 |
 | skill `tier-routing` | 主代理创建子代理前自动触发：按候选目录选模型并写明，告诉主代理什么时候干脆自己做。 |
@@ -157,7 +160,7 @@ Codex 是 `~/.codex/plugins/data/tier-guard-tier-guard/`，主文件是 `decisio
 | | Claude Code CLI | Codex CLI / Desktop |
 |---|---|---|
 | hook 能看到任务文本 | ✅ | ❌ 只拿到看不出内容的令牌 |
-| 首次派活拦截 / 提醒 | ✅ 已开启 | 关闭 |
+| 首次派活拦截 / 提醒（切到 guard / audit 后） | ✅ 宿主闸门已开 | 闸门关闭 |
 | 自动改写参数（auto） | ✅ 已实测（未写明模型的只读子任务实际跑在 haiku） | ❌ 只能建议 |
 | 主代理按 skill 自己选模型 | ✅ | ✅ 已实测三档派发 |
 | 实际执行模型与用量 | ✅ SubagentStop 回读 | 只记派活参数 |

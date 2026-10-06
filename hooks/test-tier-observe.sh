@@ -130,7 +130,7 @@ label "${D2}" u-a1 maybe >/dev/null; RC=$?
 check "label：未知判定 → 拒绝" "$(yn [ "${RC}" -ne 0 ])"
 # Phase 9：v2 记录没有 R-IRREVERSIBLE / T1 判定，/tier-label 只用于 v1 历史记录，要明说而不是报「没命中」
 DV2="${TMP}/dv2"; mkdir -p "${DV2}"
-printf '%s' "$(agentp u-v2 s2 d - $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' /nope)" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" \
+printf '%s' "$(agentp u-v2 s2 d - $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' /nope)" | env TIER_GUARD_MODE=audit HOME="${FAKEHOME}" \
   TIER_GUARD_LOG_DIR="${DV2}" TIER_GUARD_CONFIG="${ROOT}/config/routing.catalog.v2.json" /bin/bash "${ROOT}/hooks/tier-guard.sh" agent >/dev/null
 OUT="$(label "${DV2}" u-v2 fp)"; RC=$?
 v2_label_refused() { [ "${RC}" -ne 0 ] && has "${OUT}" "仅限 v1 历史记录"; }

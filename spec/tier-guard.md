@@ -5,6 +5,8 @@
 >
 > 2026-09-13 增补「主代理预路由提醒」（用户已确认 audit 提醒与 auto 每会话一次 deny；已实施）。
 >
+> 2026-10-06 用户确认出厂默认 profile 由 `guard` 改为 `off`（派活大多不省钱，见 dispatch verdict；spec-guard 会话提出）。
+>
 > 2026-10-06 收尾评审后用户确认 Phase 9：修复评审发现的缺陷、日志不再记派活描述原文、报告区分宿主内部子代理。
 >
 > 2026-09-13 Task 12 评估后用户确认：新增 `guard` profile 并设为默认（每会话第一次未 pin 派活拦一次、不改参数）。
@@ -94,7 +96,7 @@ L3 任务做同样的对照，不能沿用 L2 的结论。
 
 目录还必须为每个候选宿主声明 `host_capabilities.<host>.pre_dispatch_apply`。它是宿主版本的
 实测闸门，不是模型能力或用户 mode：只有它为 `true`，`auto` 才可以输出参数改写；否则仍记录
-相同决定但 `applied=false`。生产目录默认 profile 为 `guard`（与 `audit` 一样不改写参数）；能力闸门只在有对应真实端到端证据的宿主上
+相同决定但 `applied=false`。生产目录出厂默认 profile 为 `off`（2026-10-06 用户确认；`guard` / `audit` 都不改写参数，可用 `/tier-mode` 打开）；能力闸门只在有对应真实端到端证据的宿主上
 开启，不能靠临时环境变量绕过。当前 Claude Code CLI 已开启，Codex CLI 与 Desktop 保持关闭。
 
 目录同时为每个宿主声明 `host_capabilities.<host>.dispatch_nudge`：只有宿主已实测支持在
@@ -332,7 +334,8 @@ tier-guard 只有 `PreToolUse` 与 `SubagentStop` 两个观察点，看不到测
 因此插件在**子代理创建事件**上驱动主代理自己做预路由，hook 不做语义判断。
 
 Task 12 真实宿主评估（同一证据文档）进一步显示：在 Claude 上，`audit` 的提醒会被忽略，且提醒在当次工具结果之后才送达，
-结构上无法影响会话第一次派活；每会话拦一次的 deny 则让取舍类任务稳定拿到高能力档。所以默认 profile 为 `guard`：
+结构上无法影响会话第一次派活；每会话拦一次的 deny 则让取舍类任务稳定拿到高能力档。所以当时把默认 profile 定为 `guard`
+（2026-10-06 起出厂默认改为 `off`：派活大多不省钱，不派活的用户不该被宿主自己的子代理触发拦截；`guard` 的行为不变）：
 
 - 触发条件：未 pin 的派活（PreToolUse `Agent` / `spawn_agent`），且宿主 `dispatch_nudge=true`。pin 的判定同上；
   无法解析是否 pin 的插件 agent（`plugin:name`）不提醒。
@@ -395,7 +398,7 @@ agent-skills 的 `/build`，spec-guard 控制不了、也验证不了标记是�
 
 | Host | 当前合同 |
 |---|---|
-| Claude Code CLI 2.1.269 | 已验证 `Agent` 的可见任务文本、pin 和 `updatedInput` 在派发前生效；明确只读的未 pin child 已实际以 Haiku 启动。生产目录为该宿主开启能力闸门与 `dispatch_nudge`；默认 profile 为 `guard`（不改写参数），每个会话第一次未 pin 派活会被拦下一次。Cloud 不从此结论外推。 |
+| Claude Code CLI 2.1.269 | 已验证 `Agent` 的可见任务文本、pin 和 `updatedInput` 在派发前生效；明确只读的未 pin child 已实际以 Haiku 启动。生产目录为该宿主开启能力闸门与 `dispatch_nudge`；出厂默认 profile 为 `off`，切到 `guard`（不改写参数）后每个会话第一次未 pin 派活会被拦下一次。Cloud 不从此结论外推。 |
 | Codex CLI 0.154.0 | 已验证 `updatedInput` 在真实交互式子代理派发前被采纳，且不改变父代理；但原生 `collaboration.spawn_agent` 在 hook 边界交付不透明任务令牌，尚不能据此验证自动语义降档。生产目录仍保持建议式。 |
 | Codex Desktop | 已验证原生 `collaboration.spawn_agent` 进入 audit hook；尚未验证 `updatedInput` 被实际派发采纳，因此只能建议式，不可标为自动路由。 |
 | Codex Cloud | 独立验证；不从 CLI 或 Desktop 外推。 |
@@ -537,7 +540,7 @@ adapter 已输出 `updatedInput`，不等于宿主接收或子代理实际执行
   可验证的“不提醒 / 不 deny”行为；预路由 deny 每个会话至多一次（收回 deny 不受此限，也不依赖
   `session_id`，见「升档与收回」）。
 - 自然触发评估在 Claude Code CLI 与 Codex CLI 上各自达到 Success criteria 的阈值，并有独立端到端证据。
-- 默认 profile 为 `guard`；`guard` 下任何路径都不输出 `updatedInput`；`/tier-mode` 可直接持久设为 `guard`
+- 出厂默认 profile 为 `off`（2026-10-06 起）；`guard` 下任何路径都不输出 `updatedInput`；`/tier-mode` 可直接持久设为 `guard`
   （不改写参数，不需要 auto 的质量门槛），`audit` 仍可选作只提醒、不拦截。
 - 上游档位标记：恰好一次且取值合法时被采纳；0 次、≥2 次、取值非法、信封字段不符分别降级为
   `unavailable` 并走纯推断，核心不失败。

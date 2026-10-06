@@ -36,7 +36,7 @@ echo "隔离工作目录：${SMOKE_DIR}"
 echo "（信任只在首次运行时询问一次，作用于 ${SMOKE_ROOT}）"
 echo "唯一审计目录：${SMOKE_LOG_DIR}"
 echo "父代理：gpt-6.1-sol / high（不等于任何子代理目标，继承与路由不会混淆）。"
-echo "本次用 TIER_GUARD_MODE=audit 强制覆盖；生产默认 profile 是 guard。"
+echo "本次用 TIER_GUARD_MODE=audit 强制覆盖；生产出厂默认 profile 是 off。"
 echo "在 TUI 显示三个 child 回复后，退出 Codex 回到此脚本以打印只读证据。"
 
 TIER_GUARD_LOG_DIR="${SMOKE_LOG_DIR}" TIER_GUARD_MODE=audit \

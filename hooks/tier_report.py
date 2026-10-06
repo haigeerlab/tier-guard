@@ -423,7 +423,7 @@ def render(ddir, recs, broken, recent, share_days=None, projects=None):
            f"- 当前 mode：**{mode}**（来源：{src}）",
            f"- 数据：`{os.path.join(ddir, 'decisions.jsonl')}`"]
     if recs is None:
-        out += ["", "还没有任何记录（文件不存在）。默认 guard 下 hook 每判一次子代理创建就会记一条。"]
+        out += ["", "还没有任何记录（文件不存在）。出厂默认 off 不记录；用 `/tier-mode guard` 或 `audit` 打开后，hook 每判一次子代理创建就会记一条。"]
         recs = []
     else:
         ts = [r["ts"] for r in recs if r.get("ts")]
@@ -541,7 +541,7 @@ def render(ddir, recs, broken, recent, share_days=None, projects=None):
     if report_cfg is None:
         out.append("配置读不到，无法判断。")
     elif report_cfg.get("schema_version") == 2:
-        out.append("v2 默认 profile 为 guard（不改写参数）；持久 auto 要等真实宿主质量校准与端到端证据后才会开放。")
+        out.append("v2 出厂默认 profile 为 off（可用 `/tier-mode` 持久设为 guard / audit，均不改写参数）；持久 auto 要等真实宿主质量校准与端到端证据后才会开放。")
     else:
         ok, reasons = gate(recs, labels, report_cfg)
         out.append("✅ 数据门槛已满足（切换仍需人工执行 `/tier-mode auto`）" if ok

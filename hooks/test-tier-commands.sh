@@ -124,10 +124,11 @@ echo "═══ v2 路由审计 ═══"
 V2DATA="${TMP}/v2-data"
 V2STATE="${TMP}/v2-state"
 V2SIMPLE=$'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。'
-check "运行时默认：mode 命令读取 v2 guard" "$(yn has "$(statecurrent show)" "当前 mode：guard")"
-hookcurrent "${V2STATE}" agent "$(mk "${V2SIMPLE}" -)" >/dev/null
-check "运行时默认：Claude hook 产生 v2 审计记录（默认 profile guard）" "$(yn v2_state_guard)"
-check "v2 mode：默认是 guard" "$(yn has "$(statev2 show)" "当前 mode：guard")"
+# 2026-10-06 用户确认：出厂默认 off（派活大多不省钱；不派活的用户不该被宿主自己的子代理触发拦截）
+check "运行时默认：mode 命令读取 v2 off" "$(yn has "$(statecurrent show)" "当前 mode：off")"
+OUT="$(hookcurrent "${V2STATE}" agent "$(mk "${V2SIMPLE}" -)")"
+check "运行时默认：off 下 Claude hook 不输出、不留记录" "$(yn [ -z "${OUT}" -a ! -e "${V2STATE}/decisions.jsonl" ])"
+check "v2 mode：默认是 off" "$(yn has "$(statev2 show)" "当前 mode：off")"
 statev2 set audit >/dev/null; RC=$?
 check "v2 mode：set audit 写入状态文件" "$(yn [ "${RC}" -eq 0 -a "$(cat "${V2STATE}/mode")" = audit ])"
 statev2 set dry-run >/dev/null; RC=$?

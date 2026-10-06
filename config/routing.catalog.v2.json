@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "mode": "guard",
+  "mode": "off",
   "routing": {
     "pin_policy": "respect",
     "unknown_requirement": "conservative"

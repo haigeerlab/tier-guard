@@ -12,7 +12,7 @@
                  在这些情况下有内容：mode=auto、能确认未 pin、需要应用目标时（updatedInput；fork 与
                  插件 agent 判不出 pin，不改写）；宿主 `dispatch_nudge=true` 且未 pin 时的提醒
                  （additionalContext，audit/guard/auto 皆可能出现，可能与 updatedInput 合并）；
-                 guard（默认）/ auto 下同一 session 第一次未 pin 派活的 deny，以及 L2 第二次失败的
+                 guard / auto 下同一 session 第一次未 pin 派活的 deny，以及 L2 第二次失败的
                  收回 deny（permissionDecision，此时绝不带 updatedInput）。v1 raise 路径仅为兼容
   bash           PreToolUse(Bash) 且命令里有 codex-exec.sh：只记「建议 vs 实际」，任何
                  mode 下都不输出（Task 4a：提议式，绝不改用户批准过的派活命令）

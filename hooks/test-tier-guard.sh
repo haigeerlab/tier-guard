@@ -589,7 +589,7 @@ runv2 audit "$(mk $'只读审查配置，禁止修改任何文件。\n验收：�
 check "v2 日志：description 不记原文，只记长度与 sha256" \
   "$(lastlog '"DESC_SECRET_77" not in json.dumps(r, ensure_ascii=False) and "description" not in r and r["description_chars"] == 14 and len(r["description_sha256"]) == 64')"
 
-# ── guard（默认 profile，Task 14）：拦一次、之后提醒；pre_dispatch_apply=true 也从不改写参数 ──
+# ── guard（Task 14；2026-10-06 起出厂默认为 off）：拦一次、之后提醒；pre_dispatch_apply=true 也从不改写参数 ──
 runnudge guard "$(mksess G1 "${NUDGE_TASK}" - nomodel)"
 check "guard：gate 开 + 新会话未 pin → deny（常量开头 + 候选摘要），不带 updatedInput" \
   "$(nudgeq 'o["hookSpecificOutput"]["permissionDecision"] == "deny" and deny_ok(o["hookSpecificOutput"]["permissionDecisionReason"]) and "updatedInput" not in o["hookSpecificOutput"]')"

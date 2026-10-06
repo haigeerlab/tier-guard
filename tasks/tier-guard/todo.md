@@ -111,6 +111,7 @@
   - v1 / v2 写日志处一并改；v1 重派推断改比 sha256（兼容旧记录原文）；新断言先红后绿；变异 4 条全抓到，打断的 tier18 锚点已更新
 - [x] Task 31 · 文档整理：README 重写（场景、价值与设计理念、安装、用法、命令、架构、与 spec-guard 配合）；过时注释与说明
   - 另修：四个 hook 头注释（guard 也会 deny）、SKILL.md（auto 只能环境变量临时开、标记字段顺序、Desktop 旧型号标为历史证据）、CHANGELOG Unreleased；安装命令按两边 CLI `--help` 核对
+- [x] 出厂默认 mode 由 guard 改为 off（spec-guard 会话提出，2026-10-06 用户确认）：目录、规约、plan 决策表、CLAUDE.md、README、命令、skill、报告文案与依赖默认值的测试同步；off 下 tier-routing skill 照常可用
 - [ ] Checkpoint · Phase 9（validate + 完整变异测试；推送与是否发 0.2.7 先问）
 
 ## 待补宿主验收（不改变生产配置）

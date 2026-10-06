@@ -3,7 +3,27 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.7] - 2026-10-06
+
+### Changed
+
+- **The factory default mode is now `off` instead of `guard`.** Measured
+  dispatch mostly does not save money, and under `guard` the subagents
+  Claude Code spawns on its own (Explore, general-purpose) also triggered
+  the once-per-session deny, costing users who never dispatch an extra
+  main-session turn. With `off` the hooks do nothing (no deny, no reminder,
+  no log); the `tier-routing` skill still guides the main agent to pick an
+  explicit model. Turn the hooks on with `/tier-mode guard` or
+  `/tier-mode audit`. A mode already set through `/tier-mode` is kept.
+
+- The log no longer stores the Agent `description` or the Codex
+  `task_name` as text, only their length and SHA-256, the same as the
+  prompt.
+- `/tier-label` says it only labels v1 history records and refuses v2
+  records with that explanation.
+- README rewritten: the problem, the measured verdict that dispatch mostly
+  does not save money, design principles, install on both hosts, modes,
+  commands, architecture, and the spec-guard tier marker.
 
 ### Fixed
 
@@ -24,17 +44,6 @@ All notable user-facing changes are documented here. Version numbers follow
   ignore; it now shows the mode the hooks actually use.
 - `off` set through `/tier-mode` still logged routes that fell back
   without a profile. It now logs nothing.
-
-### Changed
-
-- The log no longer stores the Agent `description` or the Codex
-  `task_name` as text, only their length and SHA-256, the same as the
-  prompt.
-- `/tier-label` says it only labels v1 history records and refuses v2
-  records with that explanation.
-- README rewritten: the problem, the measured verdict that dispatch mostly
-  does not save money, design principles, install on both hosts, modes,
-  commands, architecture, and the spec-guard tier marker.
 
 ## [0.2.6] - 2026-10-06
 

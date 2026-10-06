@@ -24,6 +24,7 @@ hook 编码的证据，但**不构成 v2 的完成项**。本计划完成前，�
 - 2026-10-05 用户确认 Phase 7 的 D1–D3：失败次数随标记行 `failures=N` 传入；合法上游 tier 可低于「信息不足」保守档，但撤销不了不可逆 / 歧义 / 取舍 floor；L2 二次失败收回 deny 仅 guard / auto、pin 不拦、受 `dispatch_nudge` 闸门、不限每会话一次。
 - 2026-10-05 用户确认 Phase 8：先测派活成本（opus 父代理 × 上下文大小）；若 Codex L2 改用 Luna，可放开「升档只许动 effort，不许换 slug」；「不省钱就别派」先只做在 tier-routing skill 里。
 - 2026-09-13 Task 12 评估后用户确认：新增 `guard` profile 并设为默认（推翻「默认 audit」）。guard = 每会话第一次未 pin 派活 deny 一次、之后提醒，**从不改写参数**；audit 退回只记录 + 提醒；auto = guard + 参数改写。guard 不改参数，可由 `/tier-mode` 直接持久化，不需要 auto 的质量门槛。
+- 2026-10-06 用户确认：出厂默认 profile 由 `guard` 改为 `off`（推翻上一条的「设为默认」，guard 行为不变）。依据是派活大多不省钱（dispatch verdict）；guard 下宿主自己派的 Explore 等子代理也会触发每会话一次拦截，不派活的用户白付一轮主会话。off 下 tier-routing skill 照常可用，只是 hook 不拦截、不提醒、不记录。
 
 ## Dependency graph
 

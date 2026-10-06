@@ -7,7 +7,7 @@
     {
       "name": "tier-guard",
       "source": "./",
-      "description": "为未 pin 子代理按任务需求选择最低成本合格模型；主代理不换模型，默认 guard。"
+      "description": "为未 pin 子代理按任务需求选择最低成本合格模型；主代理不换模型，出厂默认 off。"
     }
   ]
 }
