@@ -105,7 +105,8 @@
 
 - [x] Task 28 · 路由修复：auto 不改写 fork / 插件 agent（D1）；只读 + 实现同现归 unknown（D2）；`reason` 里出现 `failures=` 判非法（D3）
   - 新断言先红后绿（Claude 薄壳 4 条、契约 D2/D3）；变异 6 条全抓到，改动打断的 1 条旧锚点已更新
-- [ ] Task 29 · 报告与模式修复：宿主内部子代理单独计数（R1/R2）；`/tier-doctor` 模式与 hook 一致（D4）；off 一律不记（D7）
+- [x] Task 29 · 报告与模式修复：宿主内部子代理单独计数（R1/R2）；`/tier-doctor` 模式与 hook 一致（D4）；off 一律不记（D7）
+  - 新断言先红后绿；变异 6 条全抓到。本机真实日志：派活 474 次、未写 transcript 0%；宿主内部 2906 次单列；守卫兜底 2653 → 0
 - [ ] Task 30 · 隐私与 tier-label：`description` / `task_name` 只记长度与 sha256；`/tier-label` 标明仅限 v1 记录
 - [ ] Task 31 · 文档整理：README 重写（场景、价值与设计理念、安装、用法、命令、架构、与 spec-guard 配合）；过时注释与说明
 - [ ] Checkpoint · Phase 9（validate + 完整变异测试；推送与是否发 0.2.7 先问）

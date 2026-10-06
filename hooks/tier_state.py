@@ -89,12 +89,6 @@ def _config(path=None):
         return None
 
 
-def _config_mode():
-    """保留给 doctor 等只读调用方的旧接口。"""
-    cfg = _config()
-    return (cfg or {}).get("mode")
-
-
 def _profiles(cfg):
     return V2_SETTABLE if isinstance(cfg, dict) and cfg.get("schema_version") == 2 else LEGACY_SETTABLE
 

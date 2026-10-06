@@ -36,7 +36,10 @@ def load_records(path):
 
 
 def cmd_doctor(ddir, data_from_host):
-    mode, source = tier_state.read_mode(ddir, tier_state._config_mode())
+    cfg = tier_state._config()
+    # 与 hook 用同一组允许值：v2 下旧模式（如 dry-run）回退默认，doctor 不能报一个 hook 根本不用的值
+    allowed = tier_state.rd.ROUTING_PROFILES if (cfg or {}).get("schema_version") == 2 else None
+    mode, source = tier_state.read_mode(ddir, (cfg or {}).get("mode"), allowed)
     path = os.path.join(ddir, "decisions.jsonl")
     records, broken = load_records(path)
     codex = [record for record in records if record.get("event") == "codex-spawn"]

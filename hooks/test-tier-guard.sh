@@ -458,6 +458,10 @@ OFFD="${TMP}/v2-off"; mkdir -p "${OFFD}"; printf 'off\n' > "${OFFD}/mode"
 printf '%s' "$(stopp "${TMP}/sub/agent-a.jsonl")" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" TIER_GUARD_LOG_DIR="${OFFD}" \
   TIER_GUARD_CONFIG="${ROOT}/config/routing.catalog.v2.json" /bin/bash "${HOOK}" subagent-stop >/dev/null
 check "v2 SubagentStop：状态文件 off → 不留日志" "$(yn [ ! -e "${OFFD}/decisions.jsonl" ])"
+# Phase 9 D7：off 下路由走了兜底（空 prompt 等）时，决定里没有 profile，旧代码会把它记进日志
+printf '%s' "$(mk "" - nomodel)" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" TIER_GUARD_LOG_DIR="${OFFD}" \
+  TIER_GUARD_CONFIG="${ROOT}/config/routing.catalog.v2.json" /bin/bash "${HOOK}" agent >/dev/null
+check "v2 Agent：状态文件 off + 路由兜底 → 仍不留日志" "$(yn [ ! -e "${OFFD}/decisions.jsonl" ])"
 
 # ── v2 主代理预路由提醒（Task 10）：判据在 route_decide.nudge_decision，这里只测薄壳编码 ──
 nudgeq() {  # $1=python 表达式（变量 o=stdout JSON，rd=route_decide 模块，cfg=对应配置字典，

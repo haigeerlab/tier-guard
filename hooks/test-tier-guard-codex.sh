@@ -393,6 +393,10 @@ OUT="$(printf '%s' "$(spn C "${NUDGE_TASK}" - -)" | env -u TIER_GUARD_MODE HOME=
         TIER_GUARD_LOG_DIR="${NOFFD}" TIER_GUARD_CONFIG="${V2_NUDGE_CONFIG}" /bin/bash "${HOOK}")"; RC=$?
 check "nudge：状态文件 off → 退出 0、stdout 空" "$(yn [ "${RC}" -eq 0 -a -z "${OUT}" ])"
 check "nudge：状态文件 off → 不留日志" "$(yn [ ! -e "${NOFFD}/decisions.jsonl" ])"
+# Phase 9 D7：off 下路由走兜底（空任务）时决定里没有 profile，旧代码会把它记进日志
+printf '%s' "$(spn C "" - -)" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" \
+  TIER_GUARD_LOG_DIR="${NOFFD}" TIER_GUARD_CONFIG="${V2_NUDGE_CONFIG}" /bin/bash "${HOOK}" >/dev/null
+check "状态文件 off + 路由兜底 → 仍不留日志" "$(yn [ ! -e "${NOFFD}/decisions.jsonl" ])"
 
 # ── deny 标记：目录名 64-hex，不含原始 session id ──
 check "nudge：deny 标记文件名都是 64 位十六进制，且不含原始 session id" \

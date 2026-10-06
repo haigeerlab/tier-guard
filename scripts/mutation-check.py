@@ -898,6 +898,30 @@ def _requirements''', "killed"),
     ("phase9 D3: 「no failures yet」这类不带等号的也判非法", RD, RTC,
      '''    if re.search(r"(?:^|\\s)failures=", reason):''',
      '''    if "failures" in reason:''', "killed"),
+    # Phase 9 Task 29
+    ("phase9 R1: 宿主内部子代理仍进覆盖率分母", TR, TTC,
+     '''if r.get("event") == "subagent-stop" and id(r) not in internal]''',
+     '''if r.get("event") == "subagent-stop"]''', "killed"),
+    ("phase9 R1: 宿主内部子代理那一行从不显示", TR, TTC,
+     '''    if internal:
+        out.append(f"另有宿主内部''',
+     '''    if False:
+        out.append(f"另有宿主内部''', "killed"),
+    ("phase9 R2: 宿主内部子代理的异常仍算守卫兜底", TR, TTC,
+     '''        if id(r) in internal:
+            continue''',
+     '''        if False:
+            continue''', "killed"),
+    ("phase9 D4: doctor 读模式不带允许值（报出 hook 不用的旧模式）", "hooks/tier_doctor.py",
+     ("/bin/bash", "hooks/test-tier-doctor.sh"),
+     '''    mode, source = tier_state.read_mode(ddir, (cfg or {}).get("mode"), allowed)''',
+     '''    mode, source = tier_state.read_mode(ddir, (cfg or {}).get("mode"))''', "killed"),
+    ("phase9 D7: Claude off 下路由兜底仍记日志", CH, TTG,
+     '''        if rec is not None and record_mode != "off" and mode != "off":''',
+     '''        if rec is not None and record_mode != "off":''', "killed"),
+    ("phase9 D7: Codex off 下路由兜底仍记日志", CX, TGC,
+     '''        if rec is not None and record_mode != "off" and mode != "off":''',
+     '''        if rec is not None and record_mode != "off":''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")

@@ -411,7 +411,7 @@ def on_subagent_stop_v2(payload):
 def main(argv):
     event = argv[0] if argv else "agent"
     raw = sys.stdin.read()
-    rec, out = None, None
+    rec, out, mode = None, None, None
     try:
         payload = json.loads(raw)
         if not isinstance(payload, dict):
@@ -442,7 +442,8 @@ def main(argv):
     try:
         decision = rec.get("decision") if isinstance(rec, dict) else {}
         record_mode = (decision or {}).get("mode") or (decision or {}).get("profile")
-        if rec is not None and record_mode != "off":
+        # off 一律不记：路由走兜底时决定里没有 profile，只看 record_mode 会漏（Phase 9 D7）
+        if rec is not None and record_mode != "off" and mode != "off":
             write_log(rec)
     except Exception:
         pass                                       # 日志写不进去也不能挡住干活

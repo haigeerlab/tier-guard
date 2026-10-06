@@ -64,6 +64,15 @@ def _agents(recs):
     return [r for r in recs if r.get("event") == "agent" and not (r.get("decision") or {}).get("fallback")]
 
 
+def _host_internal_stops(recs):
+    """不带 agent_type、也关联不到任何派活的 SubagentStop：宿主内部子代理，不是派活（spec Observability）。
+
+    本机实测 2900 / 2900 条如此，带 agent_type 的 473 / 473 条都能关联到派活。返回这些记录的 id() 集合。"""
+    dispatched = {r.get("tool_use_id") for r in recs if r.get("event") == "agent" and r.get("tool_use_id")}
+    return {id(r) for r in recs if r.get("event") == "subagent-stop"
+            and not r.get("agent_type") and r.get("tool_use_id") not in dispatched}
+
+
 def _v2_routes(recs):
     """v2 审计记录与旧 raise/floor 记录分开统计，避免把两种口径混成“欠配”。"""
     return [r for r in recs if r.get("routing_version") == 2 and isinstance(r.get("decision"), dict)]
@@ -170,7 +179,8 @@ def _v2_audit(out, recs, recent):
                f"hook 已输出改写 {emitted}；pin {pinned}；fallback {actions['pass'] + actions['unsupported']}。")
     # 宿主对某些子代理种类不写 transcript。那不是守卫异常，但它直接决定「实际执行」这一列
     # 有多少是真的未知 —— 不单列出来，读者会以为是 tier-guard 没观测到。
-    all_stops = [r for r in recs if r.get("event") == "subagent-stop"]
+    internal = _host_internal_stops(recs)
+    all_stops = [r for r in recs if r.get("event") == "subagent-stop" and id(r) not in internal]
     # 新记录带 transcript_status；更早的记录把同一件事记成了 FileNotFoundError 兜底，两种都要算，
     # 否则在旧日志上这一行会报 0%，而日志里恰恰躺着成千上万条同类事件。
     no_transcript = sum(1 for r in all_stops
@@ -178,11 +188,15 @@ def _v2_audit(out, recs, recent):
                         or "FileNotFoundError" in (r.get("fallback") or ""))
     if all_stops:
         share = no_transcript / len(all_stops) * 100
-        out.append(f"SubagentStop {len(all_stops)} 次，其中宿主未写 transcript {no_transcript} 次（{share:.1f}%）；"
+        out.append(f"SubagentStop（派活）{len(all_stops)} 次，其中宿主未写 transcript {no_transcript} 次（{share:.1f}%）；"
                    "这部分的实际执行无从观测，与守卫异常无关。")
+    if internal:
+        out.append(f"另有宿主内部子代理的 SubagentStop {len(internal)} 次（不带 agent_type、关联不到派活），"
+                   "不是派活，不计入上面的比例与守卫兜底。")
     # 只报 token，不报成本：价格随模型和账号变动，把价格表写进插件等于埋一个会过期的「事实」。
     # 每任务 token 是宿主给出的硬事实，换算成钱由看报告的人按当时价格自己做。
-    used, untrusted = _usage_groups(all_stops)
+    # 用量表仍看全部 stop：宿主内部子代理本就没有 transcript，不会进表；这里不重复做归类
+    used, untrusted = _usage_groups([r for r in recs if r.get("event") == "subagent-stop"])
     if used:
         by_model = {}
         for execution, usage in used:
@@ -418,7 +432,10 @@ def render(ddir, recs, broken, recent, share_days=None, projects=None):
     _v2_nudge(out, recs)
 
     s, rules, fallbacks = Counter(), Counter(), Counter()
+    internal = _host_internal_stops(recs)
     for r in recs:
+        if id(r) in internal:
+            continue
         d = r.get("decision") or {}
         if r.get("fallback") or d.get("fallback"):
             fallbacks[(r.get("fallback") or d.get("fallback")).split(":")[0]] += 1
