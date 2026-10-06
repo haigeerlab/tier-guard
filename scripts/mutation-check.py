@@ -384,8 +384,10 @@ M = [
      '''    return [os.path.join(os.path.expanduser("~"), ".claude", "agents"),\n            os.path.join(project, ".claude", "agents")]''', "killed"),
     ("shell: v2 仍跳过 SubagentStop（报告永远未观测）", CH, TTG,
      '''            elif event == "subagent-stop" and mode != "off":''', '''            elif False:''', "killed"),
-    ("shell: v2 SubagentStop 在 off 下也记日志", CH, TTG,
-     '''            elif event == "subagent-stop" and mode != "off":''', '''            elif event == "subagent-stop":''', "killed"),
+    # 等价（Phase 9 D7 起）：off 下 main 末尾的写日志一律跳过、stdout 恒空，这里的 off 判断只省掉一次
+    # transcript 回读，行为不可观察。off 不记日志由「phase9 D7」两条变异体与 SubagentStop off 断言守着。
+    ("shell: v2 SubagentStop 在 off 下也读 transcript（日志已由 D7 统一挡住）", CH, TTG,
+     '''            elif event == "subagent-stop" and mode != "off":''', '''            elif event == "subagent-stop":''', "equivalent"),
     ("shell: v2 实际执行把宿主没给的 effort 编成值", CH, TTG,
      '''{"model": model, "reasoning_effort": None} if model else None''',
      '''{"model": model, "reasoning_effort": "medium"} if model else None''', "killed"),
