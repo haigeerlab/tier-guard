@@ -135,7 +135,7 @@ def on_agent(payload, cfg, mode):
     d = rd.decide(payload, cfg, ctx)
     prompt = ti.get("prompt") if isinstance(ti.get("prompt"), str) else ""
     rec = _base_record("agent", payload, prompt)
-    rec.update(subagent_type=ti.get("subagent_type"), description=ti.get("description"),
+    rec.update(subagent_type=ti.get("subagent_type"), **tier_state.text_digest("description", ti.get("description")),
                requested_model=ti.get("model"), agent_model=ctx.get("agent_model", "(未解析)"),
                transcript_path=payload.get("transcript_path"), decision=d, applied=False)
     out = None
@@ -237,7 +237,7 @@ def on_agent_v2(payload, cfg, mode, catalog_identity):
 
     rec = _base_record("agent", payload, prompt)
     rec.update(routing_version=2, subagent_type=subagent_type,
-               description=ti.get("description"), requested_model=ti.get("model"),
+               **tier_state.text_digest("description", ti.get("description")), requested_model=ti.get("model"),
                agent_model=agent_model if found else "(未解析)",
                task_visibility=rd.task_visibility(prompt),
                transcript_path=payload.get("transcript_path"), decision=d,
@@ -367,7 +367,7 @@ def on_subagent_stop(payload, cfg, mode):
     rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
            "event": "subagent-stop", "session_id": payload.get("session_id"),
            "tool_use_id": meta.get("toolUseId"), "agent_type": meta.get("agentType"),
-           "description": meta.get("description"), "requested_model": meta.get("model"),
+           **tier_state.text_digest("description", meta.get("description")), "requested_model": meta.get("model"),
            "actual_model": model, "actual_tier": rd._family_tier(model, cfg) if model else None,
            "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest() if prompt else None,
            "escalated": rd.escalated(payload.get("last_assistant_message"))}

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""/tier-label：人工标注。只追加到 <数据目录>/labels.jsonl，同一个 id 以最后一次为准。
+"""/tier-label：人工标注 v1 历史记录。只追加到 <数据目录>/labels.jsonl，同一个 id 以最后一次为准。
+
+仅限 v1 记录：v2 路由不再有 R-IRREVERSIBLE 命中与 T1 档，v2 记录一律拒绝并说明（Phase 9）。
 
   fp / tp          这条 R-IRREVERSIBLE 命中是误报 / 真命中（算误报率）
   reject / accept  这次 T1 子代理的产出被打回 / 验收通过（覆写「重派推断」，算打回率）
@@ -38,6 +40,9 @@ def main(argv):
         print(f"❌ 日志里没有 tool_use_id={tid} 的 Agent 判定记录 —— 先跑 /tier-report 抄 id")
         return 1
     a, s = hit
+    if a.get("routing_version") == 2:
+        print(f"❌ {tid} 是 v2 记录：/tier-label 仅限 v1 历史记录（v2 不再有 R-IRREVERSIBLE / T1 判定）")
+        return 1
     if label in ("fp", "tp") and not tier_report._irr(a).get("hit"):
         print(f"❌ {tid} 没有命中 R-IRREVERSIBLE，fp / tp 无从谈起")
         return 1

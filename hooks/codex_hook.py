@@ -92,7 +92,7 @@ def on_spawn(payload, cfg, mode):
     d = rd.decide({"tool_name": "Agent", "tool_input": {"prompt": text}}, cfg, ctx)
     rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
            "event": "codex-spawn", "session_id": payload.get("session_id"),
-           "tool_use_id": payload.get("tool_use_id"), "task_name": ti.get("task_name"),
+           "tool_use_id": payload.get("tool_use_id"), **tier_state.text_digest("task_name", ti.get("task_name")),
            "text_source": source, "prompt_chars": len(text),
            "prompt_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
            "actual": {"model": ctx["codex_model"], "effort": ctx["codex_effort"]},
@@ -167,7 +167,7 @@ def on_spawn_v2(payload, cfg, mode, catalog_identity):
     rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
            "event": "codex-spawn", "routing_version": 2,
            "session_id": session_id, "tool_use_id": payload.get("tool_use_id"),
-           "task_name": ti.get("task_name"), "text_source": source, "prompt_chars": len(text),
+           **tier_state.text_digest("task_name", ti.get("task_name")), "text_source": source, "prompt_chars": len(text),
            "prompt_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
            "task_visibility": visibility,
            "catalog_identity": catalog_identity,

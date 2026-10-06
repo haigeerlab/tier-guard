@@ -397,6 +397,10 @@ check "nudge：状态文件 off → 不留日志" "$(yn [ ! -e "${NOFFD}/decisio
 printf '%s' "$(spn C "" - -)" | env -u TIER_GUARD_MODE HOME="${FAKEHOME}" \
   TIER_GUARD_LOG_DIR="${NOFFD}" TIER_GUARD_CONFIG="${V2_NUDGE_CONFIG}" /bin/bash "${HOOK}" >/dev/null
 check "状态文件 off + 路由兜底 → 仍不留日志" "$(yn [ ! -e "${NOFFD}/decisions.jsonl" ])"
+# Phase 9 Task 30：task_name 只记长度与 sha256
+runv2 audit "$(spn C "${NUDGE_TASK}" - - | sed 's/"task_name": "t1"/"task_name": "TASK_SECRET_88"/')"
+check "v2 日志：task_name 不记原文，只记长度与 sha256" \
+  "$(lastlog '"TASK_SECRET_88" not in json.dumps(r, ensure_ascii=False) and "task_name" not in r and r["task_name_chars"] == 14 and len(r["task_name_sha256"]) == 64')"
 
 # ── deny 标记：目录名 64-hex，不含原始 session id ──
 check "nudge：deny 标记文件名都是 64 位十六进制，且不含原始 session id" \

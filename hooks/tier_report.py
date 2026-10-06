@@ -64,6 +64,11 @@ def _agents(recs):
     return [r for r in recs if r.get("event") == "agent" and not (r.get("decision") or {}).get("fallback")]
 
 
+def _desc_key(r):
+    """同一 description 的比较键：新记录只有 sha256（Phase 9），更早的记录是原文。"""
+    return r.get("description_sha256") or r.get("description")
+
+
 def _host_internal_stops(recs):
     """不带 agent_type、也关联不到任何派活的 SubagentStop：宿主内部子代理，不是派活（spec Observability）。
 
@@ -300,7 +305,7 @@ def t1_runs(pairs, labels):
             continue
         again = any(b.get("session_id") == a.get("session_id") and a.get("session_id")
                     and b.get("subagent_type") == a.get("subagent_type")
-                    and b.get("description") == a.get("description")
+                    and _desc_key(b) == _desc_key(a)
                     for b, _ in pairs[i + 1:])
         out.append((a, s, again, "重派" if again else ""))
     return out

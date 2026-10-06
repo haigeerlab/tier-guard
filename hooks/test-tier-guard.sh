@@ -584,6 +584,10 @@ check "nudge：remind 的日志不含 prompt 原文" "$(lastnudgelog '"'"${SECRE
 runnudge auto "$(mksess se2 "只读检查一遍。${SECRET_TOKEN}" - nomodel)"
 check "nudge：deny 的 stdout 不含 prompt 原文" "$(yn out_lacks_token)"
 check "nudge：deny 的日志不含 prompt 原文" "$(lastnudgelog '"'"${SECRET_TOKEN}"'" not in json.dumps(r, ensure_ascii=False)')"
+# Phase 9 Task 30：Agent 的 description 同样只记长度与 sha256（它由主代理写，可能带任务细节）
+runv2 audit "$(mk $'只读审查配置，禁止修改任何文件。\n验收：报告所有键名。' - nomodel | sed 's/"description": "t"/"description": "DESC_SECRET_77"/')"
+check "v2 日志：description 不记原文，只记长度与 sha256" \
+  "$(lastlog '"DESC_SECRET_77" not in json.dumps(r, ensure_ascii=False) and "description" not in r and r["description_chars"] == 14 and len(r["description_sha256"]) == 64')"
 
 # ── guard（默认 profile，Task 14）：拦一次、之后提醒；pre_dispatch_apply=true 也从不改写参数 ──
 runnudge guard "$(mksess G1 "${NUDGE_TASK}" - nomodel)"

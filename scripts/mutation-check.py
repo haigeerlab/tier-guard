@@ -676,8 +676,8 @@ def _requirements''', "killed"),
      '''rec.update(routing_version=2, subagent_type=subagent_type,''',
      '''rec.update(prompt=prompt, routing_version=2, subagent_type=subagent_type,''', "killed"),
     ("tier18: Codex 薄壳把任务原文（或不透明令牌）写进日志", CX, TGC,
-     '''"task_name": ti.get("task_name"), "text_source": source, "prompt_chars": len(text),''',
-     '''"task_name": ti.get("task_name"), "text_source": source, "prompt_chars": len(text), "task": text,''', "killed"),
+     '''**tier_state.text_digest("task_name", ti.get("task_name")), "text_source": source, "prompt_chars": len(text),''',
+     '''**tier_state.text_digest("task_name", ti.get("task_name")), "text_source": source, "prompt_chars": len(text), "task": text,''', "killed"),
     ("tier18: 核心把 reason 原文留在结果里（Claude 日志）", RD, TTG,
      '''"reason_present": bool(reason)}''',
      '''"reason_present": bool(reason), "reason": reason}''', "killed"),
@@ -922,6 +922,21 @@ def _requirements''', "killed"),
     ("phase9 D7: Codex off 下路由兜底仍记日志", CX, TGC,
      '''        if rec is not None and record_mode != "off" and mode != "off":''',
      '''        if rec is not None and record_mode != "off":''', "killed"),
+    # Phase 9 Task 30
+    ("phase9 privacy: Claude v2 description 仍记原文", CH, TTG,
+     '''               **tier_state.text_digest("description", ti.get("description")), requested_model=ti.get("model"),''',
+     '''               description=ti.get("description"), requested_model=ti.get("model"),''', "killed"),
+    ("phase9 privacy: Codex v2 task_name 仍记原文", CX, TGC,
+     '''           **tier_state.text_digest("task_name", ti.get("task_name")), "text_source": source, "prompt_chars": len(text),''',
+     '''           "task_name": ti.get("task_name"), "text_source": source, "prompt_chars": len(text),''', "killed"),
+    ("phase9 privacy: v1 重派推断不认 sha256（新记录永远判不出重派）", TR, TTO,
+     '''    return r.get("description_sha256") or r.get("description")''',
+     '''    return r.get("description")''', "killed"),
+    ("phase9 label: v2 记录不拒绝（报成「没命中」）", TL, TTO,
+     '''    if a.get("routing_version") == 2:
+        print(f"❌ {tid} 是 v2 记录''',
+     '''    if False:
+        print(f"❌ {tid} 是 v2 记录''', "killed"),
 ]
 
 SUMMARY = re.compile(r"总计 [1-9]\d* 通过 / 0 失败|route contract: OK")

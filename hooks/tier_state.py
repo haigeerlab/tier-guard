@@ -82,6 +82,13 @@ def read_mode(ddir, default, allowed=None):
     return default, "当前路由配置默认值"
 
 
+def text_digest(field, value):
+    """主代理写的任务相关文本（Agent description、Codex task_name）只记长度与 sha256，不记原文。"""
+    if not isinstance(value, str):
+        return {}
+    return {f"{field}_chars": len(value), f"{field}_sha256": hashlib.sha256(value.encode("utf-8")).hexdigest()}
+
+
 def _config(path=None):
     try:
         return rd.load_config(path or rd.DEFAULT_CATALOG)
