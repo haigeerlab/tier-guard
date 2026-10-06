@@ -96,6 +96,8 @@
 - [x] Task 27 · 与 spec-guard 联调：Claude / Codex × 派 / 不派，成本报告与日志交叉核对
   - 主组 14 次已核对、三方一致：Claude 仅 Task 4（L2→sonnet）派了便宜 23%；R 组 4 次一次没派；Codex 亏在 wait_agent 轮询。
     记录：[`joint cost test`](../../docs/research/2026-10-06-spec-guard-joint-cost-test.md)。口径已与 spec-guard 核清（成本报告不含最后一次勾选后的收尾轮）。补跑：Codex W 组一次长等待后 wait_agent 25–31→5–7 次、与不派持平；Claude S 组新门槛只一半选中 Task 4 且未省钱
+- [x] 补跑完整变异测试（2026-10-06，HEAD `a8e3ce0`，负载均值约 8–14）：符合预期 257 / 不符 0 / 锚点失效 0（抓到 252、如期等价 5），
+  7 组基线全绿。补上 `439dd3f` 记下的缺口：当时 `test-tier-guard.sh` 基线因高负载下性能断言失败，其 54 个变异体未跑，这次全部抓到
 
 ## 待补宿主验收（不改变生产配置）
 
