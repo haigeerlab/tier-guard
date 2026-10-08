@@ -5,6 +5,13 @@ All notable user-facing changes are documented here. Version numbers follow
 
 ## [Unreleased]
 
+### Fixed
+
+- Report the current mode from the current configuration for missing, empty and
+  v1-only logs. Persistent audit/guard modes and legacy-mode fallback now agree
+  with state. Keep v1 gate statistics explicitly historical; they do not permit
+  current v2 auto mode.
+
 ### Changed
 
 - Add matching Chinese and English README, usage/configuration reference,
@@ -13,8 +20,8 @@ All notable user-facing changes are documented here. Version numbers follow
   prerequisites, configuration precedence, permissions, verification, updates,
   uninstall and troubleshooting. Correct stale default-mode descriptions.
 - Mark research and archived release notes as historical evidence without
-  changing their original results. Document the existing empty-log report mode
-  limitation; no routing behaviour or production configuration changes.
+  changing their original results. Clarify current-mode reporting and historical
+  statistics without changing routing behaviour or production configuration.
 
 ## [0.2.7] - 2026-10-06
 

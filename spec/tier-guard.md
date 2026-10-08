@@ -439,6 +439,14 @@ adapter 已输出 `updatedInput`，不等于宿主接收或子代理实际执行
 带 `agent_type` 的 473 / 473 条都能关联到派活）。报告把它们单独计数，不算进实际执行覆盖率，
 它们读不到 transcript 时的异常也不计入守卫放行兜底。
 
+### 报告的当前模式与历史统计
+
+report 的“当前 mode”与当前持久 auto 条件以现行 v2 配置为准，模式覆盖顺序复用
+`tier_state.read_mode`：环境变量、当前配置允许的持久模式、配置默认值。
+空日志、只有坏行或只有 v1 记录均不能使当前运行配置退回 v1；旧 `dry-run` 模式文件按
+当前配置回退。v1 判定、关联、打回率和数据门槛统计继续保留，门槛结果须明确标为历史数据，
+不能暗示当前 v2 可以据此开启 auto。本修复不修改实际持久 auto 拒绝逻辑或宿主闸门。
+
 ### 每次派发必记的档位字段
 
 在既有字段之外，每条派发记录还必须能回答「这个档是怎么来的」和「这次是不是升档」：
@@ -561,13 +569,13 @@ adapter 已输出 `updatedInput`，不等于宿主接收或子代理实际执行
 
 ## Documentation impact
 
-以下决定针对本次文档治理补齐：沿用现有指导来源，不改变产品、架构或接口需求。
+以下决定沿用现有指导来源；本次报告模式来源修复不改变产品目标、架构或路由接口需求。
 后续任务如需修改权威文档，应重新声明对应影响并在 Plan 中列出文档交付。
 
 | Concern | Decision | Rationale |
 |---|---|---|
 | product-direction | follow | 沿用本 Spec 的目标、成功标准与边界，保留未完成宿主验收。 |
-| architecture | follow | 沿用 Plan 中已定架构与依赖方向，本次不修改运行实现。 |
+| architecture | follow | 沿用 Plan 中已定架构与依赖方向；报告修复不改变路由判据或宿主闸门。 |
 | developer-entry | follow | 沿用已补齐的 AGENTS.md 及其引用的 CLAUDE.md，不重复维护开发规则。 |
-| consumer-guide | follow | 沿用双语文档导航与当前使用说明，不修改历史实测结果。 |
+| consumer-guide | follow | 沿用现有双语用户文档；空日志报告修复同步 compatibility/reference 和 Unreleased 说明，不修改历史实测记录。 |
 | integration-contract | follow | 沿用 RouteRequest、Decision 和宿主限制，保留 Codex 上游前置条件。 |

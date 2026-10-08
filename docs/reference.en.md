@@ -122,7 +122,7 @@ Hook exceptions attempt to allow execution and record fallback; an unwritable di
 4. Check `routing_version`, event, `requested`, `decision`, `catalog_identity` and `applied`; also check Codex `task_visibility`.
 5. To prove the actual model, inspect host receipts or transcripts. A Claude alias resolving to a different concrete model is not necessarily a routing error; missing data does not mean zero usage.
 
-Codex CLI `/hooks` reviews trust; doctor cannot prove it. Verify Desktop using native dispatch, not a collaboration API that bypasses the host hook. See [compatibility](compatibility.en.md) for the empty-log report mode limitation.
+Codex CLI `/hooks` reviews trust; doctor cannot prove it. Verify Desktop using native dispatch, not a collaboration API that bypasses the host hook. The report reads the current mode from the current configuration regardless of log version or availability; the v1 gate is historical only. See [compatibility](compatibility.en.md).
 
 ## 7. Temporary auto experiments
 

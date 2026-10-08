@@ -415,10 +415,10 @@ def _legacy_config():
 
 def render(ddir, recs, broken, recent, share_days=None, projects=None):
     cfg = _config()
-    # 报告支持历史 v1 日志；没有 v2 记录时仍以旧门槛解释其历史统计。
+    # 当前模式始终用当前配置；旧配置只解释 v1 历史数据门槛。
     report_cfg = cfg if _v2_routes(recs or []) else _legacy_config()
-    mode, src = tier_state.read_mode(ddir, (report_cfg or {}).get("mode"),
-                                     tier_state._profiles(report_cfg))
+    mode, src = tier_state.read_mode(ddir, (cfg or {}).get("mode"),
+                                     tier_state._profiles(cfg))
     out = ["## tier-guard 路由摘要", "",
            f"- 当前 mode：**{mode}**（来源：{src}）",
            f"- 数据：`{os.path.join(ddir, 'decisions.jsonl')}`"]
@@ -538,13 +538,14 @@ def render(ddir, recs, broken, recent, share_days=None, projects=None):
 
     # auto 门槛
     out += ["", "### 切 auto 的门槛", ""]
-    if report_cfg is None:
+    if cfg is None:
         out.append("配置读不到，无法判断。")
-    elif report_cfg.get("schema_version") == 2:
+    elif cfg.get("schema_version") == 2:
         out.append("v2 出厂默认 profile 为 off（可用 `/tier-mode` 持久设为 guard / audit，均不改写参数）；持久 auto 要等真实宿主质量校准与端到端证据后才会开放。")
-    else:
+    if report_cfg is not None and report_cfg.get("schema_version") != 2:
+        out += ["", "#### v1 历史数据门槛", "", "以下仅解释历史 v1 数据，不代表当前 v2 可开启 auto。"]
         ok, reasons = gate(recs, labels, report_cfg)
-        out.append("✅ 数据门槛已满足（切换仍需人工执行 `/tier-mode auto`）" if ok
+        out.append("✅ 数据门槛已满足（仅反映历史 v1 数据）" if ok
                    else "❌ 未满足：\n" + "\n".join(f"- {x}" for x in reasons))
 
     if share_days is not None:

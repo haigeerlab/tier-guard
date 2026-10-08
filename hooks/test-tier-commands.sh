@@ -90,6 +90,32 @@ OUT="$(env -u TIER_GUARD_MODE HOME="${FAKEHOME}" python3 "${ROOT}/hooks/tier_rep
 c_empty() { [ "${RC}" -eq 0 ] && has "${OUT}" "还没有任何记录"; }
 check "没有日志 → 退出 0，明说还没有记录" "$(yn c_empty)"
 
+# 当前模式来自当前目录配置，不能由日志格式或有没有记录决定。
+check "report runtime：没有日志时默认 off" "$(yn has "${OUT}" "当前 mode：**off**")"
+check "report runtime：空日志仍说明 v2 auto 尚未开放" "$(yn has "${OUT}" "持久 auto 要等真实宿主质量校准")"
+reportdata() { env -u TIER_GUARD_MODE python3 "${ROOT}/hooks/tier_report.py" --data "$1"; }
+EMPTYDATA="${TMP}/empty"
+mkdir -p "${EMPTYDATA}"
+: > "${EMPTYDATA}/decisions.jsonl"
+check "report runtime：空文件默认 off" "$(yn has "$(reportdata "${EMPTYDATA}")" "当前 mode：**off**")"
+printf 'not json\n' > "${EMPTYDATA}/decisions.jsonl"
+OUT="$(reportdata "${EMPTYDATA}")"
+c_empty_broken_mode() { has "${OUT}" "当前 mode：**off**" && has "${OUT}" "有 1 行不是合法 JSON"; }
+check "report runtime：只有坏行时仍 off 并保留诊断" "$(yn c_empty_broken_mode)"
+rm -f "${EMPTYDATA}/decisions.jsonl"
+printf 'dry-run\n' > "${EMPTYDATA}/mode"
+OUT="$(reportdata "${EMPTYDATA}")"
+c_empty_legacy_mode() { has "${OUT}" "当前 mode：**off**" && has "${OUT}" "旧模式"; }
+check "report runtime：v1 模式文件回退当前 off" "$(yn c_empty_legacy_mode)"
+for CURRENT_PROFILE in off audit guard; do
+  printf '%s\n' "${CURRENT_PROFILE}" > "${EMPTYDATA}/mode"
+  check "report runtime：空日志持久 ${CURRENT_PROFILE} 生效" \
+    "$(yn has "$(reportdata "${EMPTYDATA}")" "当前 mode：**${CURRENT_PROFILE}**")"
+done
+OUT="$(TIER_GUARD_MODE=audit python3 "${ROOT}/hooks/tier_report.py" --data "${EMPTYDATA}")"
+c_empty_env_mode() { has "${OUT}" "当前 mode：**audit**" && has "${OUT}" "环境变量 TIER_GUARD_MODE"; }
+check "report runtime：环境覆盖持久 guard" "$(yn c_empty_env_mode)"
+
 # 让真 hook 判一轮（状态文件是 dry-run）
 hook agent "$(mk "改完后 git push 到 origin。${AC}${PAD}" sonnet)"        >/dev/null  # 欠配
 hook agent "$(mk "检查有没有人写了 git push。${AC}${PAD}" sonnet)"        >/dev/null  # 欠配 + 疑似误报
@@ -108,7 +134,9 @@ check "report：起点未知被钉 T2 单列 1" "$(yn has "${REP}" "不计入欠
 check "report：建议 local 1" "$(yn has "${REP}" "| 建议 local / defer | 1 / 0 |")"
 check "report：Codex 一致 1 / 不一致 1（普通 Bash 不计）" "$(yn has "${REP}" "共 2 次：一致 1 / 不一致 1")"
 check "report：Codex 表格给出建议值（不一致那条建议 xhigh）" "$(yn has "${REP}" "| gpt-5.6-terra / high | gpt-5.6-terra / xhigh | ❌ |")"
-check "report：当前 mode 来自状态文件" "$(yn has "${REP}" "当前 mode：**dry-run**")"
+check "report runtime：v1 日志不恢复旧运行模式" "$(yn has "${REP}" "当前 mode：**off**")"
+check "report runtime：v1 日志仍按当前 v2 说明 auto 条件" "$(yn has "${REP}" "持久 auto 要等真实宿主质量校准")"
+check "report runtime：v1 门槛明确标为历史统计" "$(yn has "${REP}" "以下仅解释历史 v1 数据，不代表当前 v2 可开启 auto。")"
 c_sections() { has "${REP}" "### 建议档 vs 实际执行档" && has "${REP}" "### 打回率" && has "${REP}" "### 误报率" && has "${REP}" "### 切 auto 的门槛"; }
 check "report：建议 vs 实际 / 打回率 / 误报率 / auto 门槛 四节都在" "$(yn c_sections)"
 c_v1_only_link() { has "${REP}" "已关联 0 / 5 次" && ! has "${REP}" "v1 旧记录：" && ! has "${REP}" "v2：已观测实际执行"; }

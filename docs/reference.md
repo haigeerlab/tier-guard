@@ -122,7 +122,7 @@ hook 异常尽量放行、尽量写 fallback；数据目录不可写时日志也
 4. 核对 `routing_version`、事件、`requested`、`decision`、`catalog_identity` 和 `applied`；Codex 同时查看 `task_visibility`。
 5. 若需要证明实际模型，核对宿主回执或转录。Claude 别名与实际型号不同不一定是错误；缺少数据不等于零用量。
 
-Codex CLI 的 `/hooks` 负责信任审核；doctor 无法证明信任。Desktop 必须通过原生派活检查，不用绕过宿主 hook 的协作 API 代替。空日志 report 的模式显示限制见[兼容性](compatibility.md)。
+Codex CLI 的 `/hooks` 负责信任审核；doctor 无法证明信任。Desktop 必须通过原生派活检查，不用绕过宿主 hook 的协作 API 代替。report 按现行配置显示当前模式，空日志或旧日志不改变其来源；v1 门槛仅作历史统计。详见[兼容性](compatibility.md)。
 
 ## 7. 临时 auto 的实验边界
 

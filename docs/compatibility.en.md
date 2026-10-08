@@ -16,9 +16,10 @@ Checked on 2026-10-08 against source version 0.2.7. Production defaults to `off`
 
 This review checked installation, update and uninstall interfaces with local `--help` from Claude Code 2.1.291 and Codex CLI 0.160.0, without rerunning real host dispatch. macOS Bash 3.2 is the repository regression environment; other Unix environments need host and shell verification.
 
+The report always reads the current mode from the current configuration, even with empty or v1-only logs. The default is `off`; environment overrides and valid persistent modes retain their precedence. The v1 gate explains historical data only and does not permit current v2 auto mode.
+
 ## 2. Known limitations
 
-- **Empty-log mode display:** report uses historical v1 configuration when no v2 records exist and may show `dry-run`; state / doctor reads the current v2 default `off`. Reproducible with an empty temporary data directory. This change documents the limitation without altering runtime logic.
 - **Custom catalogs are not propagated:** hooks read `TIER_GUARD_CONFIG`; state uses `--config`; doctor / report read plugin defaults. See [configuration precedence](reference.en.md#3-configuration-sources-and-precedence).
 - **Skill execution varies:** installation does not ensure loading on every natural dispatch. Explicit parameters are pins, so hooks do not correct a main agent's poor tier choice.
 - **Execution and usage gaps:** Claude depends on host transcripts, which report tries to reread. Codex auditing records dispatch parameters only, not proof of actual models or total cost.
