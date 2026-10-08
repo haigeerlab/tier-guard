@@ -37,5 +37,18 @@
       "reverted": false
     }
   ],
-  "real_host_dispatches": 0
+  "real_host_dispatches": 0,
+  "follow_up_hook_ui_verification": {
+    "recorded_on": "2026-10-08",
+    "source": "user-provided Codex CLI /hooks screenshot in this conversation",
+    "plugin": "tier-guard@tier-guard",
+    "event": "PreToolUse",
+    "script": "tier-guard-codex.sh",
+    "enabled": true,
+    "displayed_trust": "Trusted",
+    "full_install_path_visible": false,
+    "hook_execution_verified": false,
+    "automatic_routing_verified": false,
+    "remaining_unchecked_items": 5
+  }
 }
