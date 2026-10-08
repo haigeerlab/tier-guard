@@ -189,3 +189,12 @@
   - 完整 `/bin/bash scripts/validate.sh` 退出 0，`git diff --check` 通过；官方产物检查 3 通过、0 警告、0 失败。
     原有 5 个未完成项和运行代码保持不变。本批完成的是文档治理声明及历史快照保存，
     不代表历史全流程已补证或模块已交付；未提交、推送、发布或进行付费派活。
+
+## Phase 13 · 剩余事项核对与历史补正（2026-10-08，用户已确认）
+
+- [x] Task 43 · 保存剩余事项核对证据及原样历史审计报告
+  - 审计来源按原字节保存，哈希与已确认 correction 一致；现有样本核对保留原有五项状态。
+- [x] Task 44 · 按已审阅 correction 追加 imported → unknown 补正，并核验实际结果
+  - 官方 correct --confirm 成功；实际账本与已审阅预测一致，原 initiatives 和快照哈希保持不变。
+    validate、verify、verify-history 均通过；audit 为 correctedFindings=1、unresolvedFindings=0，真实历史时间仍未知。
+- [ ] Task 45 · 完整回归、官方检查、限定范围提交与 origin/main 同步（report）

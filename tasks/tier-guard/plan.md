@@ -817,3 +817,28 @@ Phase 9: Tasks 28 → 29 → 30 touch the hooks and are done serially; Task 31 c
 
 运行官方产物检查、完整仓库回归和 diff 检查，记录实际结果；保留原有 5 个未完成项。
 不提交、推送、发布、付费派活或修正未证实的历史值。
+
+## Phase 13：剩余事项核对与历史补正（2026-10-08，用户已确认）
+
+用户已于 2026-10-08 以“继续”确认本批设计、审计报告、补正记录及完整预览。
+范围仅历史补正、审计来源保存和执行记录；
+原有五个未勾选项保持原状态。批准本批即授权验证后提交并推送至既有 origin/main；不发版。
+
+### Task 43：保存剩余事项核对证据
+
+保存 docs/research/2026-10-08-remaining-items-review.md 与原样审计报告
+2026-10-08-history-audit.json。分别记录已同步提交、Codex 上游阻塞与自然样本不足的边界。
+
+### Task 44：追加已审阅的历史补正
+
+复核审计报告的精确哈希和 correction.json 中的身份与原值后，运行官方 capability-history.py
+correct --confirm。只追加 legacy 的 event.at: imported → unknown 补正；不重写原事件或快照。
+
+**验收：** 原 initiatives 字节对应的 JSON 值与地图哈希不变，validate/verify 通过；
+实际 audit 为 correctedFindings=1、unresolvedFindings=0，真实历史时间仍未知。
+
+### Task 45：本批验证与交付（report）
+
+运行官方产物和历史检查、完整 /bin/bash scripts/validate.sh 与 git diff --check；
+实际结果写入 todo。仅提交本批五个文件，核对 origin/main 无分叉后推送并读回远端提交。
+遇到差异、校验失败或远端结果未知停止交付。新增付费宿主实验另行取得具体范围与用量授权。

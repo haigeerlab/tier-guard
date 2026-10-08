@@ -19,5 +19,25 @@
         }
       ]
     }
+  ],
+  "corrections": [
+    {
+      "type": "history-correction",
+      "initiativeId": "legacy",
+      "eventIndex": 0,
+      "checkpointId": "19700101T000000Z-0001",
+      "moduleId": null,
+      "field": "event.at",
+      "before": "imported",
+      "after": "unknown",
+      "auditedAt": "2026-10-08T08:37:38Z",
+      "auditReportSha256": "c801c6d5abc158f7c19a5ebfdd8900e3a898cb5422067ff54603c95847730407",
+      "sources": [
+        {
+          "kind": "audit-finding",
+          "code": "timestamp-unverified"
+        }
+      ]
+    }
   ]
 }
