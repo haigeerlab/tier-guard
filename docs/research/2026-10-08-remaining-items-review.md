@@ -48,3 +48,10 @@ Codex 最近 4 条记录的任务信号均未知，无法据它们认定任务�
 实际账本与预测一致，validate、verify 和 verify-history 通过，实际 audit 为
 correctedFindings=1、unresolvedFindings=0；原 initiatives 与能力图哈希不变。
 这表示告警已有明确的 unknown 补正，不表示已找回历史时间或模块已完成。
+
+## 本批交付结果
+
+完整 `/bin/bash scripts/validate.sh` 退出 0，diff 检查通过；官方产物检查 3 通过、
+0 警告、0 失败，历史核验通过。补正与证据以五文件提交 `2739548` 推送到 origin/main，
+远端读回 `2739548482fc0c2ba46a7ca7f463ae061cbe2def`。本节与 todo 的完成记录在
+取得该远端结果后补记。原有五个未勾选项仍保留，包括同一 Codex 阻塞链与两项观察。

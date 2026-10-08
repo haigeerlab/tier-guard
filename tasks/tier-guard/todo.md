@@ -197,4 +197,7 @@
 - [x] Task 44 · 按已审阅 correction 追加 imported → unknown 补正，并核验实际结果
   - 官方 correct --confirm 成功；实际账本与已审阅预测一致，原 initiatives 和快照哈希保持不变。
     validate、verify、verify-history 均通过；audit 为 correctedFindings=1、unresolvedFindings=0，真实历史时间仍未知。
-- [ ] Task 45 · 完整回归、官方检查、限定范围提交与 origin/main 同步（report）
+- [x] Task 45 · 完整回归、官方检查、限定范围提交与 origin/main 同步（report）
+  - 完整 `/bin/bash scripts/validate.sh` 退出 0，diff 检查通过；官方产物检查 3 通过、0 警告、0 失败，历史核验通过。
+    五文件补正提交 `2739548` 已推送，远端 main 读回 `2739548482fc0c2ba46a7ca7f463ae061cbe2def`。
+    原有五项状态保持不变；本批交付完成记录在读回远端成功后补记，不代表 Codex 上游阻塞或两项观察已解决。
