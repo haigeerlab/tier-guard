@@ -1,5 +1,7 @@
 # spec-guard `build-task-dispatch` 验收：主干开发流程接上 tier-guard
 
+> 历史记录：本文的版本、默认模式、型号、价格、路径和发布状态以记录日期为准。当前使用说明见 [README](../../README.md)，现行宿主能力及限制见 [兼容性](../compatibility.md)。原始实验结果保留。
+
 > 状态：**接入成立；第三轮（`ac85154`）顺序规则在提交受阻场景下守住**　｜　日期：2026-10-05　｜　spec-guard PR haigeerlab/spec-guard-plugin#192
 > （分支 `claude/build-task-dispatch`）　｜　agent-skills `0.6.11` · tier-guard `0.2.4`
 

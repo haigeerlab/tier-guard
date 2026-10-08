@@ -7,7 +7,7 @@ hook（claude_hook.py）、/tier-report、/tier-mode 共用这一份 —— 数�
   数据目录  --data 参数 → TIER_GUARD_LOG_DIR → CLAUDE_PLUGIN_DATA → ~/.local/state/tier-guard
   mode      TIER_GUARD_MODE → <数据目录>/mode（/tier-mode 写的）→ 配置默认值
 
-/tier-mode 的 v2 默认值来自目录配置的 mode 字段（当前是 guard）；持久 auto 要等真实宿主质量校准。
+/tier-mode 的 v2 默认值来自目录配置的 mode 字段（当前是 off）；持久 auto 要等真实宿主质量校准。
 旧 v1 配置仍可显式读取，其 mode 集合是 off / dry-run / auto，供历史日志和迁移测试兼容。
 
 用法:

@@ -1,5 +1,7 @@
 # Task 4b 真实宿主 smoke：Codex CLI
 
+> 历史记录：本文的版本、默认模式、型号、价格、路径和发布状态以记录日期为准。当前使用说明见 [README](../../README.md)，现行宿主能力及限制见 [兼容性](../compatibility.md)。原始实验结果保留。
+
 > 日期：2026-09-12　｜　宿主：codex-cli 0.153.4（TUI，交互式）　｜　被测：从 marketplace 装进 Codex 的 tier-guard 0.1.0
 
 ## 方法

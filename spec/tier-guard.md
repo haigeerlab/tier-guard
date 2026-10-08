@@ -355,9 +355,9 @@ Task 12 真实宿主评估（同一证据文档）进一步显示：在 Claude �
 
 | Profile | 行为 |
 |---|---|
-| `off` | 不分类、不记录、不改写。 |
+| `off`（出厂默认） | 不分类、不记录、不改写；tier-routing skill 仍可用。 |
 | `audit` | 计算并记录建议，不改写参数；显式 pin 也保留方向性 action，但 `target=null`。未 pin 派活且 `dispatch_nudge=true` 时注入提醒。 |
-| `guard`（默认） | 与 audit 同样记录、不改写参数；`dispatch_nudge=true` 时每个会话第一次未 pin 派活 deny 一次要求显式传参，之后未 pin 派活附提醒。 |
+| `guard` | 与 audit 同样记录、不改写参数；`dispatch_nudge=true` 时每个会话第一次未 pin 派活 deny 一次要求显式传参，之后未 pin 派活附提醒。 |
 | `auto` | `guard` 的全部行为，外加对未 pin 请求应用决定（仅限已验证的 host adapter）。 |
 
 `semantic` 不是独立 mode，而是 `audit` 或 `auto` 下的可选 classifier provider。默认关闭；
@@ -395,6 +395,8 @@ agent-skills 的 `/build`，spec-guard 控制不了、也验证不了标记是�
 [联调记录](../docs/research/2026-10-05-spec-guard-joint-test.md)。
 
 ## Host compatibility
+
+当前用户入口见 [兼容性与已知限制](../docs/compatibility.md)；历史实测版本与原始回执不构成对新版本的自动支持承诺。
 
 | Host | 当前合同 |
 |---|---|

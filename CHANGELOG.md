@@ -3,6 +3,19 @@
 All notable user-facing changes are documented here. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Add matching Chinese and English README, usage/configuration reference,
+  compatibility guide, contribution guide and documentation index.
+- Separate Claude Code plugin commands from Codex shell entry points; document
+  prerequisites, configuration precedence, permissions, verification, updates,
+  uninstall and troubleshooting. Correct stale default-mode descriptions.
+- Mark research and archived release notes as historical evidence without
+  changing their original results. Document the existing empty-log report mode
+  limitation; no routing behaviour or production configuration changes.
+
 ## [0.2.7] - 2026-10-06
 
 ### Changed

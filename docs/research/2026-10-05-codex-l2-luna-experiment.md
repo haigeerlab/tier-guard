@@ -1,5 +1,7 @@
 # Codex L2 候选：GPT-6 Luna 对 GPT-6.1 Sol/medium
 
+> 历史记录：本文的版本、默认模式、型号、价格、路径和发布状态以记录日期为准。当前使用说明见 [README](../../README.md)，现行宿主能力及限制见 [兼容性](../compatibility.md)。原始实验结果保留。
+
 > 状态：**已完成——Luna/high 可以承担 L2**　｜　日期：2026-10-05　｜　Task 24（spec「Dispatch economics → Codex 的 L2 候选」）
 
 ## 结论

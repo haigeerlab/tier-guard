@@ -123,7 +123,7 @@
   [`Task 7 CLI v2 smoke`](../../docs/research/2026-09-12-task7-codex-cli-v2-smoke.md)。
 
 - [x] Claude Code CLI v2：真实 `PreToolUse` audit 与受控 auto 都已验证；明确只读的未 pin child
-  实际回执为 `claude-haiku-4-5-20251001`。生产仍默认 audit，Cloud 未外推。详见
+  实际回执为 `claude-haiku-4-5-20251001`。当时生产默认 audit（0.2.7 起出厂默认 off），Cloud 未外推。详见
   [`Claude CLI v2 smoke`](../../docs/research/2026-09-13-claude-cli-v2-smoke.md)。
 
 - [x] Claude Code CLI v2 完整端到端验收（A/B/C/D，报告自动记录实际执行）。2026-09-13 首轮未通过：
@@ -138,7 +138,7 @@
   [`v0.2.0 release`](../../docs/research/2026-09-14-v0.2.0-release.md)。
 
 - [x] 观察（2026-09-14 安装版验收发现）：`/tier-report`「建议档 vs 实际执行档（SubagentStop）」只按 v1 字段关联，
-  v2 记录恒显示「已关联 0 / N」，与表格里已入账的实际执行矛盾。已修复（未发布）：v2 报「已观测实际执行 X / N」，
+  v2 记录恒显示「已关联 0 / N」，与表格里已入账的实际执行矛盾。已修复（该记录初写时未发布，后于 0.2.1 发布）：v2 报「已观测实际执行 X / N」，
   v1 分母只数旧记录，不在报告里比较实际档高低；回归先红后绿，变异 2 条被抓到。本机真实日志显示 8 / 30。
   详见 [`v0.2.0 release`](../../docs/research/2026-09-14-v0.2.0-release.md)。
 
@@ -147,3 +147,18 @@
 - [ ] Codex Multi-Agent V2：在 `PreToolUse` 派发前提供可验证的任务明文，或与实际 child payload
   绑定的可信结构化能力标签；满足后重跑 Task 7。参见 OpenAI Codex
   [#33284](https://github.com/openai/codex/issues/33284)。
+
+## Phase 10 · 中文优先的双语文档修订（2026-10-08，设计已确认）
+
+> 基线 main = origin/main = `3c602f2`；fetch 与完整 validate 通过。详见 plan「Phase 10」。
+
+- [x] Task 32 · 中文 README 完整使用流程
+- [x] Task 33 · 中文参考、兼容性、贡献指南及文档导航
+- [x] Checkpoint · 中文版本（report）
+  - 临时目录验证默认 off、state / doctor、audit/off 持久切换和 auto 拒绝通过；空日志 report 显示 dry-run 的已知限制复现。中文命令与 CLI help、源码核对完成。
+- [x] Task 34 · 现行说明同步与历史范围标注
+- [x] Task 35 · 五对中英文用户文档与语言切换
+- [x] Task 36 · 链接、双语一致性、示例与完整仓库验证
+- [x] Checkpoint · 双语文档交付（report）
+  - 五对用户文档一致性、46 份 Markdown 的 245 个本地链接 / 锚点、10 个外部链接、临时目录示例、AST 范围核对与完整 validate 均通过。
+  - Codex 固定 tag 升级按官方 0.160.0 源码更正；25 份历史正文与基线一致。已知空日志 report 模式问题只作说明。完整证据及未验证项见 plan 本批交付记录。

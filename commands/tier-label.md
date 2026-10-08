@@ -6,6 +6,8 @@ allowed-tools: Bash
 
 参数：`$ARGUMENTS`
 
+这是 Claude Code 插件命令，完整入口为 `/tier-guard:tier-label`；Codex 不自动注册此命令。脚本入口和参数见 [使用与配置参考](../docs/reference.md)。
+
 **只用于 v1 历史记录。** 当前默认的 v2 路由没有 R-IRREVERSIBLE 与 T1 判定，v2 记录会被拒绝。
 
 **只接受用户在本轮亲口给出的判定。** 参数不全、或判定是你推断出来的，就停下来问用户，

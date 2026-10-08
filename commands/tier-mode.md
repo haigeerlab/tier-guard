@@ -6,6 +6,8 @@ allowed-tools: Bash
 
 参数：`$ARGUMENTS`
 
+这是 Claude Code 插件命令，完整入口为 `/tier-guard:tier-mode`。Codex 使用脚本并显式传数据目录；见 [使用与配置参考](../docs/reference.md)。已有环境变量优先于持久模式。
+
 - 参数为空：查看当前 mode 和它的来源
 
   ```bash

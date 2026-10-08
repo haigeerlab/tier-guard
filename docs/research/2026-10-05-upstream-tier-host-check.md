@@ -1,5 +1,7 @@
 # 上游档位标记的真实宿主验证（Task 22）
 
+> 历史记录：本文的版本、默认模式、型号、价格、路径和发布状态以记录日期为准。当前使用说明见 [README](../../README.md)，现行宿主能力及限制见 [兼容性](../compatibility.md)。原始实验结果保留。
+
 > 状态：**通过**　｜　日期：2026-10-05　｜　宿主：Claude Code CLI（`claude -p --plugin-dir`，HEAD `2f894bc`）
 
 验证 Phase 7（Task 16–20）在真实 Claude Code 宿主上的行为：标记采纳、floor 优先、L3 抬档、

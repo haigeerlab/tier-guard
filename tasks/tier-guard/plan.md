@@ -20,7 +20,7 @@ hook 编码的证据，但**不构成 v2 的完成项**。本计划完成前，�
 - semantic provider 先只定义受约束接口和“未配置”行为；不在本计划中联网、取凭据或发送任务原文。
 - hook adapter 必须在真实派发前改写参数才能启用 auto；Codex Desktop 已验证主代理明文预路由的三档实际派发，但 hook 因接收不透明令牌仍保持 advisory。
 - 2026-09-13 用户确认：自然使用时主代理不会自发加载 tier-routing，因此由派活事件驱动主代理显式预路由——audit 注入提醒（改变“audit 下 stdout 为空”的旧契约）、auto 每个会话 deny 一次；hook 仍不做语义判断。
-- 提醒与 deny 受 `host_capabilities.<host>.dispatch_nudge` 实测闸门控制，默认全部 `false`；判定逻辑只放在 `hooks/route_decide.py`。
+- 提醒与 deny 受 `host_capabilities.<host>.dispatch_nudge` 实测闸门控制，初始全部 `false`；Task 15 后生产目录仅 Claude Code 为 `true`，Codex 仍为 `false`。判定逻辑只放在 `hooks/route_decide.py`。
 - 2026-10-05 用户确认 Phase 7 的 D1–D3：失败次数随标记行 `failures=N` 传入；合法上游 tier 可低于「信息不足」保守档，但撤销不了不可逆 / 歧义 / 取舍 floor；L2 二次失败收回 deny 仅 guard / auto、pin 不拦、受 `dispatch_nudge` 闸门、不限每会话一次。
 - 2026-10-05 用户确认 Phase 8：先测派活成本（opus 父代理 × 上下文大小）；若 Codex L2 改用 Luna，可放开「升档只许动 effort，不许换 slug」；「不省钱就别派」先只做在 tier-routing skill 里。
 - 2026-09-13 Task 12 评估后用户确认：新增 `guard` profile 并设为默认（推翻「默认 audit」）。guard = 每会话第一次未 pin 派活 deny 一次、之后提醒，**从不改写参数**；audit 退回只记录 + 提醒；auto = guard + 参数改写。guard 不改参数，可由 `/tier-mode` 直接持久化，不需要 auto 的质量门槛。
@@ -514,7 +514,7 @@ pin and gate behaviour follow D3.
 **Acceptance criteria:**
 
 - [ ] Claude suite: reclaim produces a deny with the reclaim reason and no `updatedInput`, under each profile per D3.
-- [ ] Pinned, `off`, gate-closed and missing-`session_id` cases produce no deny, each with its own assertion.
+- [ ] Pinned, `off` and gate-closed cases produce no deny, each with its own assertion. Reclaim does not depend on `session_id`; unlike the once-per-session nudge, a missing session ID does not suppress reclaim (corrected to match spec D3 and the Task 20 completion note).
 - [ ] The once-per-session nudge marker is neither consumed nor checked by the reclaim deny.
 
 **Verification:**
@@ -672,3 +672,98 @@ Tasks 1 → 2 are sequential. Tasks 3, 4 and 5 may proceed after Task 2 but all 
 Phase 7 is sequential: Tasks 16 → 17 → 18 share the decision shape, then the checkpoint settles D1 and D3 before Tasks 19 → 20. Task 21 follows the final behaviour and Task 22 validates the code as it runs in the host.
 
 Phase 9: Tasks 28 → 29 → 30 touch the hooks and are done serially; Task 31 comes last so the docs describe the final behaviour.
+
+## Phase 10：中文优先的双语文档修订（2026-10-08，设计已确认）
+
+用户在审查仓库状态和修订设计后回复「继续」，授权制定计划并完成本地文档修订。
+基线：`main` / `origin/main` 均为 `3c602f2`，工作区干净，0.2.7；fetch 成功，validate 通过。
+不改变路由行为、配置、版本、历史任务完成状态；不提交、推送或发版。
+
+### 已确认设计
+
+- `README.md` 为中文主入口，`README.en.md` 为对应英文入口，均采用相同的 11 节结构。
+- 配套参考、当前兼容性、贡献指南、文档导航均提供中英文版本，用户可独立完成安装和使用。
+- Claude Code 插件命令与 Codex 脚本入口分开说明；模式行为受宿主能力闸门约束。
+- 历史报告保留原始结果，只加历史范围声明及现行入口；历史价格、型号不当作现行承诺。
+- 已复现的空日志报告模式问题作为已知限制说明：state 显示 off，report 显示 dry-run。
+  功能修复另行处理，本批只修改文档及直接相关的非执行注释。
+
+### Task 32：中文 README 的完整使用流程
+
+**产物：** `README.md`。
+**验收：** 11 节覆盖定位、场景与边界、前置条件、快速开始、入口与参数、输出验收、
+更新卸载、排障、架构导航、贡献反馈、许可；默认 off、pin 和两宿主差异可直接理解。
+**验证：** 对照 CLI help、清单、候选目录和脚本实现核对命令；本地链接检查。
+**依赖：** 已确认设计。
+
+### Task 33：中文参考、兼容性与贡献文档
+
+**产物：** `docs/reference.md`、`docs/compatibility.md`、`docs/contributing.md`、`docs/README.md`。
+**验收：** 配置优先级、参数、档位标记、数据权限、验收及宿主证据有明确出处；开发者可定位
+并运行免费回归；历史文档与当前使用文档分开导航。
+**验证：** 临时目录验证 show / doctor / report 的输出和模式切换；逐项核对实现与链接。
+**依赖：** Task 32。
+
+### Checkpoint：中文版本（report）
+
+记录中文文档的验证结果，继续已授权的同步及英文制作，无需再次确认。
+
+### Task 34：现行说明同步与历史范围标注
+
+**产物：** `commands/`、`skills/tier-routing/SKILL.md`、`spec/tier-guard.md`、本 plan/todo、
+`hooks/tier_state.py` 头注释、`CHANGELOG.md`；历史兼容性、候选更新等文档的顶部提示。
+**验收：** 当前默认 off 和入口限制一致；纠正 Task 20 已在 todo 记录的 session_id 说明笔误；
+不改历史实验数据或生产配置。每一处改动可追溯到本批 D1–D7。
+**验证：** diff 审查、skill-sync、脚本引用检查、Python AST 与基线一致（注释修改）。
+**依赖：** Task 33。
+
+### Task 35：英文版本
+
+**产物：** README、reference、compatibility、contributing、docs 导航各自的 `.en.md`。
+**验收：** 五对文档章节、命令块、参数、限制和链接对应；每份文档有语言切换入口；英文用户
+不必先阅读中文用户文档。spec、工作计划、skill、命令执行指令和历史原始证据保留原文。
+**验证：** 双语标题层级、命令块、表格和关键事实核对；相对链接与锚点检查。
+**依赖：** Task 34。
+
+### Task 36：完整验证与交付
+
+**验收：** 文档链接检查、双语一致性检查、临时目录示例检查、`scripts/validate.sh` 均通过；
+记录发现、修复、已知限制及未验证项；Git diff 没有运行逻辑、配置或历史状态变更。
+**验证：** `git diff --check`、完整 validate、最终状态核对。
+**依赖：** Task 35。
+
+### Checkpoint：双语文档交付（report）
+
+提供中文和英文入口、实际验证结果及空日志模式的实现限制；用户自行评审本地 diff。
+真实宿主安装、升级、信任修改与付费派活未获本轮授权，不作为本批通过项。
+如需新的行为决策或高风险操作，则报告具体问题并停止依赖该决策的工作。
+
+### 本批审查与交付记录（2026-10-08）
+
+范围：README、全部 37 份原有 Markdown、命令 / skill、清单、候选配置及相关实际实现；
+最终共有 46 份 Markdown。D1–D7 为设计审查发现，D8 为实施中官方源码核实得到的升级遗漏。
+
+| 发现 | 处理结果 |
+|---|---|
+| D1：前置条件、首次使用、验收、卸载与反馈缺漏 | 两版 README 的 11 节与配套参考覆盖 |
+| D2：Claude 命令被误读为跨宿主通用入口 | 按宿主分开，提供 Codex 脚本及数据路径定位 |
+| D3：模式表遗漏宿主能力闸门 | 两版模式 / 兼容性表明确 Claude 与 Codex 差异 |
+| D4：模式、数据、配置来源不清 | 记录实际优先级与自定义目录不同步的限制 |
+| D5：最低成本、skill 遵循与派活经济保证过强 | 区分 cost_rank、策略目标、实际执行与实验范围 |
+| D6：现行默认与历史状态混淆 | 修正规约 / 注释；25 份历史文档只加导航提示，原始正文逐文件比较一致 |
+| D7：输出 / 隐私范围不完整 | 记录路径、标识、旧记录与转录回读；空日志 report 的实现限制保留并给出可靠模式入口 |
+| D8：固定 tag 直接重复 add 无法升级 | 核对 Codex rust-v0.160.0 的 marketplace_add 与 metadata 源码，改为先移除旧来源再添加目标 tag |
+
+验证：五对文档标题层级、bash 命令块、表格形状与模型 / effort / 模式顺序一致；
+46 份 Markdown 的 245 个本地链接及锚点通过；10 个文档外部链接均返回 HTTP 200；
+候选与目录一致，skill-sync / 插件路径 / 清单检查通过；git diff --check 通过。
+临时数据目录验证 state / doctor、audit/off 切换、auto 拒绝并保留原模式，且工具不生成审计日志；
+无持久模式的空日志 report 显示 dry-run 已复现，持久 off 时 report 正确显示 off。
+完整 scripts/validate.sh 退出 0。最终 skill 文本微调后再次通过 skill-sync 和路径检查。
+
+运行代码仅修改 tier_state.py 模块文档字符串，去除模块文档字符串后 AST 与基线一致；
+配置、清单、测试、版本及历史任务完成状态未变。交付用户文档五对，共 10 份文件（重写 1 份，新增 9 份）。
+运行输出目前仍主要为中文，双语用户文档已注明。真实安装、升级、卸载、信任变更、
+付费派活和完整变异测试本批未运行。未提交、推送或发布。
+
+本批文档审查与修订完成；空日志 report 行为修复与原有 Codex 上游前置条件留待独立处理。

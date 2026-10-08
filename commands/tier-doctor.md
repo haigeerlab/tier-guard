@@ -4,6 +4,8 @@ argument-hint: ""
 allowed-tools: Bash
 ---
 
+Claude Code 完整入口为 `/tier-guard:tier-doctor`。当前使用步骤见 [参考](../docs/reference.md)，宿主支持见 [兼容性](../docs/compatibility.md)。
+
 运行下面的命令，把输出原样转告用户；不要根据“没有记录”猜测未安装或未信任。
 
 ```bash

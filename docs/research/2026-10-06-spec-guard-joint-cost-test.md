@@ -1,5 +1,7 @@
 # 与 spec-guard 联调：派活整体账（ledgerlite 模块，Claude × Codex）
 
+> 历史记录：本文的版本、默认模式、型号、价格、路径和发布状态以记录日期为准。当前使用说明见 [README](../../README.md)，现行宿主能力及限制见 [兼容性](../compatibility.md)。原始实验结果保留。
+
 > 状态：**完成（含补跑 S / W 组）**　｜　日期：2026-10-05 至 10-06　｜　Task 27　｜
 > 运行与成本报告：spec-guard 会话（module-cost-report）；核对：tier-guard 会话（本文）
 

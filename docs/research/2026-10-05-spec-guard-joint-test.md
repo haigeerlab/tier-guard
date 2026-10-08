@@ -1,5 +1,7 @@
 # tier-guard × spec-guard 联调（路径 1：经 Agent 工具的派活）
 
+> 历史记录：本文的版本、默认模式、型号、价格、路径和发布状态以记录日期为准。当前使用说明见 [README](../../README.md)，现行宿主能力及限制见 [兼容性](../compatibility.md)。原始实验结果保留。
+
 > 状态：**通过**　｜　日期：2026-10-05　｜　tier-guard `0.2.4`（默认 guard）·
 > spec-guard `0.42.0`　｜　对方会话：「项目所有者角色」，工作目录 `spec-guard-plugin`
 
