@@ -46,8 +46,8 @@ Script interfaces:
 | Script | Arguments | Defaults and purpose |
 |---|---|---|
 | `tier_state.py` | `show` or `set <mode>`; `--data DIR`; `--config PATH` | No action means show; reads the plugin v2 catalog by default |
-| `tier_doctor.py` | `--data DIR` | Diagnoses paths, effective mode, logs and Codex spawn records |
-| `tier_report.py` | `--data DIR`; `--recent N`; `--share [days]`; `--projects DIR` | recent: 10; share: 7 days; projects: `~/.claude/projects`, not total Codex usage |
+| `tier_doctor.py` | `--data DIR`; `--config PATH` | Diagnoses paths, effective mode, logs and Codex spawn records |
+| `tier_report.py` | `--config PATH`; `--data DIR`; `--recent N`; `--share [days]`; `--projects DIR` | recent: 10; share: 7 days; projects: `~/.claude/projects`, not total Codex usage |
 | `tier_label.py` | `<tool_use_id> <fp\|tp\|reject\|accept>`; `--data DIR` | Historical v1 user labels only |
 
 These are supported parameters, not a promise of graceful handling for every missing or invalid argument. Supply complete, valid values as listed.
@@ -60,11 +60,18 @@ These are supported parameters, not a promise of graceful handling for every mis
 | Mode | `TIER_GUARD_MODE` → `<data directory>/mode` → the selected configuration's `mode` |
 | Hook catalog | `TIER_GUARD_CONFIG` → plugin `config/routing.catalog.v2.json` |
 | state configuration | Script `--config` → default plugin v2 catalog; **does not automatically read `TIER_GUARD_CONFIG`** |
-| doctor / report configuration | Default plugin catalog; a custom hook catalog is not automatically propagated |
+| doctor / report configuration | Script `--config` → default plugin v2 catalog; **does not automatically read `TIER_GUARD_CONFIG`** |
 
 A normal host installation generally injects its plugin data path. An ordinary shell does not know whether you mean Claude or Codex data, so pass `--data` explicitly.
 
-Old persistent modes and environment overrides may remain. Under v2, a legacy `dry-run` mode file falls back to the catalog default. Do not edit the file to bypass an `auto` refusal. With a custom catalog, state can inspect it using the matching `--config`, but doctor / report do not support that option. Also check the hook record's actual `catalog_identity` when diagnosing configuration differences.
+Old persistent modes and environment overrides may remain. Under v2, a legacy `dry-run` mode file falls back to the catalog default. Do not edit the file to bypass an `auto` refusal. With a custom catalog, pass the same `--config PATH` to state, doctor and report. Doctor/report require a valid v2 catalog; a missing file, malformed JSON, invalid contract or missing/duplicate argument produces a clear error and nonzero exit without falling back. State retains its explicit v1 support, and report retains v1 historical statistics. Also check the hook record's actual `catalog_identity` when diagnosing configuration differences.
+
+For a custom hook catalog, use its actual path explicitly (these commands are read-only):
+
+```sh
+python3 "$TIER_GUARD_PLUGIN_ROOT/hooks/tier_doctor.py" --data "$TIER_GUARD_DATA_DIR" --config /path/to/catalog.json
+python3 "$TIER_GUARD_PLUGIN_ROOT/hooks/tier_report.py" --data "$TIER_GUARD_DATA_DIR" --config /path/to/catalog.json
+```
 
 Key catalog fields:
 

@@ -20,7 +20,7 @@ The report always reads the current mode from the current configuration, even wi
 
 ## 2. Known limitations
 
-- **Custom catalogs are not propagated:** hooks read `TIER_GUARD_CONFIG`; state uses `--config`; doctor / report read plugin defaults. See [configuration precedence](reference.en.md#3-configuration-sources-and-precedence).
+- **Custom catalogs are not propagated:** hooks read `TIER_GUARD_CONFIG`; state, doctor and report accept explicit `--config`. Without it, diagnostics read plugin defaults; they do not automatically read the hook configuration environment variable. See [configuration precedence](reference.en.md#3-configuration-sources-and-precedence).
 - **Skill execution varies:** installation does not ensure loading on every natural dispatch. Explicit parameters are pins, so hooks do not correct a main agent's poor tier choice.
 - **Execution and usage gaps:** Claude depends on host transcripts, which report tries to reread. Codex auditing records dispatch parameters only, not proof of actual models or total cost.
 - **Error logging is not guaranteed:** configuration, interpreter and permission failures attempt to allow execution; if logs cannot be written, there may be no fallback record.

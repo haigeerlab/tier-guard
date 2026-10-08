@@ -46,8 +46,8 @@ python3 "$TIER_GUARD_PLUGIN_ROOT/hooks/tier_state.py" set audit --data "$TIER_GU
 | 脚本 | 参数 | 默认与用途 |
 |---|---|---|
 | `tier_state.py` | `show` 或 `set <mode>`；`--data DIR`；`--config PATH` | 无动作时等同 show；默认读取插件 v2 目录 |
-| `tier_doctor.py` | `--data DIR` | 诊断路径、有效模式、日志及 Codex spawn 记录 |
-| `tier_report.py` | `--data DIR`；`--recent N`；`--share [天数]`；`--projects DIR` | recent 默认 10；share 默认 7 天；projects 默认 `~/.claude/projects`，不是 Codex 总用量统计 |
+| `tier_doctor.py` | `--data DIR`；`--config PATH` | 诊断路径、有效模式、日志及 Codex spawn 记录 |
+| `tier_report.py` | `--config PATH`；`--data DIR`；`--recent N`；`--share [天数]`；`--projects DIR` | recent 默认 10；share 默认 7 天；projects 默认 `~/.claude/projects`，不是 Codex 总用量统计 |
 | `tier_label.py` | `<tool_use_id> <fp\|tp\|reject\|accept>`；`--data DIR` | 仅 v1 人工标注 |
 
 这些是实际支持的参数，不表示脚本会对任意缺失或非法参数友好恢复。按表提供完整合法值。
@@ -60,11 +60,18 @@ python3 "$TIER_GUARD_PLUGIN_ROOT/hooks/tier_state.py" set audit --data "$TIER_GU
 | 模式 | `TIER_GUARD_MODE` → `<数据目录>/mode` → 所读取配置的 `mode` |
 | hook 候选目录 | `TIER_GUARD_CONFIG` → 插件 `config/routing.catalog.v2.json` |
 | state 配置 | 脚本 `--config` → 插件默认 v2 目录；**不自动读取 `TIER_GUARD_CONFIG`** |
-| doctor / report 配置 | 默认插件目录；自定义 hook 目录不自动同步到这些工具 |
+| doctor / report 配置 | 脚本 `--config` → 插件默认 v2 目录；**不自动读取 `TIER_GUARD_CONFIG`** |
 
 宿主正常安装一般会注入自己的插件数据路径；普通 shell 不会自动知道应使用 Claude 还是 Codex 数据，因此显式传 `--data`。
 
-旧持久模式与环境覆盖可能保留。v2 下旧 `dry-run` 模式文件会回退到目录默认值；不要手工编辑模式文件来绕过 `auto` 拒绝。自定义候选目录时，state 可用相同 `--config` 查看，但 doctor / report 不支持这个参数；诊断需同时核对实际 hook 记录的 `catalog_identity`。
+旧持久模式与环境覆盖可能保留。v2 下旧 `dry-run` 模式文件会回退到目录默认值；不要手工编辑模式文件来绕过 `auto` 拒绝。自定义候选目录时，state、doctor 和 report 均需显式传相同 `--config PATH`。doctor/report 要求合法 v2 目录；文件缺失、JSON 损坏、契约无效或参数缺值/重复均明确报错并非零退出，不静默回退。state 保留显式 v1 支持，report 保留 v1 历史统计。诊断需同时核对实际 hook 记录的 `catalog_identity`。
+
+自定义 hook 目录时，显式传入其实际路径（以下命令只读）：
+
+```sh
+python3 "$TIER_GUARD_PLUGIN_ROOT/hooks/tier_doctor.py" --data "$TIER_GUARD_DATA_DIR" --config /path/to/catalog.json
+python3 "$TIER_GUARD_PLUGIN_ROOT/hooks/tier_report.py" --data "$TIER_GUARD_DATA_DIR" --config /path/to/catalog.json
+```
 
 目录的关键字段：
 

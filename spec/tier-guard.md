@@ -447,6 +447,11 @@ report 的“当前 mode”与当前持久 auto 条件以现行 v2 配置为准�
 当前配置回退。v1 判定、关联、打回率和数据门槛统计继续保留，门槛结果须明确标为历史数据，
 不能暗示当前 v2 可以据此开启 auto。本修复不修改实际持久 auto 拒绝逻辑或宿主闸门。
 
+doctor/report 支持 `--config PATH` 显式选择合法 v2 目录；不传时仍读取插件默认目录，
+与 state 一样不自动读取 `TIER_GUARD_CONFIG`。配置选择与模式覆盖是两层独立优先级。
+显式配置不存在、JSON 损坏、目录契约无效（含 v1）或参数缺值时，须明确报错并非零退出，
+不得静默回退。诊断保持只读；state 既有显式 v1 支持和 report 的 v1 历史统计继续保留。
+
 ### 每次派发必记的档位字段
 
 在既有字段之外，每条派发记录还必须能回答「这个档是怎么来的」和「这次是不是升档」：
@@ -569,13 +574,13 @@ report 的“当前 mode”与当前持久 auto 条件以现行 v2 配置为准�
 
 ## Documentation impact
 
-以下决定沿用现有指导来源；本次报告模式来源修复不改变产品目标、架构或路由接口需求。
+以下决定沿用现有指导来源；本次诊断配置入口扩展不改变产品目标、架构或路由接口需求。
 后续任务如需修改权威文档，应重新声明对应影响并在 Plan 中列出文档交付。
 
 | Concern | Decision | Rationale |
 |---|---|---|
 | product-direction | follow | 沿用本 Spec 的目标、成功标准与边界，保留未完成宿主验收。 |
-| architecture | follow | 沿用 Plan 中已定架构与依赖方向；报告修复不改变路由判据或宿主闸门。 |
+| architecture | follow | 沿用 Plan 中已定架构与依赖方向；诊断配置入口不改变路由判据或宿主闸门。 |
 | developer-entry | follow | 沿用已补齐的 AGENTS.md 及其引用的 CLAUDE.md，不重复维护开发规则。 |
-| consumer-guide | follow | 沿用现有双语用户文档；空日志报告修复同步 compatibility/reference 和 Unreleased 说明，不修改历史实测记录。 |
+| consumer-guide | follow | 沿用现有双语用户文档；doctor/report 的显式配置入口同步 compatibility/reference 和 Unreleased 说明，不修改历史实测记录。 |
 | integration-contract | follow | 沿用 RouteRequest、Decision 和宿主限制，保留 Codex 上游前置条件。 |

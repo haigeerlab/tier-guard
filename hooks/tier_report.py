@@ -13,7 +13,7 @@
   - auto 门槛：误报率（已标注 ≥ N 且 < 阈值）+ 打回率（T1 ≥ N，后半段不高于前半段）。阈值在
     config 的 auto_gate。变异测试那条是发版前的仓库检查，运行时查不到，不在这里。
 
-用法: python3 hooks/tier_report.py [--data DIR] [--recent N] [--share [天数]] [--projects DIR]
+用法: python3 hooks/tier_report.py [--data DIR] [--config PATH] [--recent N] [--share [天数]] [--projects DIR]
 """
 import glob
 import json
@@ -399,9 +399,9 @@ def share(projects_dir, days):
             "share": sub_out / (sub_out + main_out) if sub_out + main_out else None}
 
 
-def _config():
+def _config(path=None):
     try:
-        return rd.load_catalog()
+        return rd.load_catalog(path if path is not None else rd.DEFAULT_CATALOG)
     except Exception:
         return None
 
@@ -413,8 +413,10 @@ def _legacy_config():
         return None
 
 
-def render(ddir, recs, broken, recent, share_days=None, projects=None):
-    cfg = _config()
+def render(ddir, recs, broken, recent, share_days=None, projects=None, config_path=None):
+    cfg = _config(config_path)
+    if config_path is not None and cfg is None:
+        raise rd.ConfigError("指定的 v2 路由配置不可用；请检查路径、JSON 与目录契约。")
     # 当前模式始终用当前配置；旧配置只解释 v1 历史数据门槛。
     report_cfg = cfg if _v2_routes(recs or []) else _legacy_config()
     mode, src = tier_state.read_mode(ddir, (cfg or {}).get("mode"),
@@ -558,6 +560,13 @@ def render(ddir, recs, broken, recent, share_days=None, projects=None):
 
 def main(argv):
     explicit, recent, share_days = None, 10, None
+    config_path = None
+    if "--config" in argv:
+        i = argv.index("--config")
+        if argv.count("--config") != 1 or i + 1 >= len(argv) or argv[i + 1].startswith("--"):
+            print("❌ --config 需要唯一且完整的路径。")
+            return 1
+        config_path = argv[i + 1]
     projects = os.path.join(os.path.expanduser("~"), ".claude", "projects")
     if "--data" in argv:
         i = argv.index("--data")
@@ -571,7 +580,12 @@ def main(argv):
         share_days = int(argv[i + 1]) if i + 1 < len(argv) and argv[i + 1].isdigit() else 7
     ddir = tier_state.data_dir(explicit or None)
     recs, broken = load(os.path.join(ddir, "decisions.jsonl"))
-    print(render(ddir, recs, broken, recent, share_days, projects))
+    try:
+        output = render(ddir, recs, broken, recent, share_days, projects, config_path)
+    except rd.ConfigError as exc:
+        print(f"❌ {exc}")
+        return 1
+    print(output)
     return 0
 
 

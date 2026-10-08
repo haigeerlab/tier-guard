@@ -436,6 +436,63 @@ LEGACYREP="$(env -u TIER_GUARD_MODE HOME="${FAKEHOME}" python3 "${ROOT}/hooks/ti
 check "report：缺 nudge 字段的 v2 记录被忽略，只数带该字段的那条" \
   "$(yn has "${LEGACYREP}" "提醒 1 次 / 拦截 0 次 / 未触发 0 次（共 1 次派活）。")"
 
+# 方案 A：配置显式选择；环境配置不自动同步；诊断不得写入数据。
+DIAGDATA="${TMP}/config-readonly"
+DIAGPERSIST="${TMP}/config-persist"
+mkdir -p "${DIAGPERSIST}"
+printf 'guard\n' > "${DIAGPERSIST}/mode"
+python3 - "${ROOT}/config/routing.catalog.v2.json" "${TMP}" <<'CATALOG'
+import json, pathlib, sys
+cfg = json.loads(pathlib.Path(sys.argv[1]).read_text())
+for mode in ("audit", "guard"):
+    cfg["mode"] = mode
+    pathlib.Path(sys.argv[2], mode + ".json").write_text(json.dumps(cfg))
+pathlib.Path(sys.argv[2], "invalid.json").write_text('{"schema_version":2,"mode":"audit"}')
+pathlib.Path(sys.argv[2], "broken.json").write_text('not JSON')
+CATALOG
+diagnostic() { env -u TIER_GUARD_MODE TIER_GUARD_CONFIG="${TMP}/guard.json" python3 "${ROOT}/hooks/tier_report.py" --data "${DIAGDATA}" "$@"; }
+diag_success() { [ "${RC}" -eq 0 ] && has "${OUT}" "$1"; }
+OUT="$(diagnostic)"; RC=$?
+check "config diagnostics：无参数不读取配置环境变量" "$(yn diag_success '当前 mode：**off**')"
+OUT="$(diagnostic --config "${TMP}/audit.json")"; RC=$?
+check "config diagnostics：CLI audit 配置优先于环境配置 guard" "$(yn diag_success '当前 mode：**audit**')"
+OUT="$(env -u TIER_GUARD_MODE python3 "${ROOT}/hooks/tier_report.py" --data "${DIAGPERSIST}" --config "${TMP}/audit.json")"; RC=$?
+check "config diagnostics：合法持久模式优先于自定义默认值" "$(yn diag_success '当前 mode：**guard**')"
+OUT="$(env TIER_GUARD_MODE=off python3 "${ROOT}/hooks/tier_report.py" --config "${TMP}/audit.json" --data "${DIAGDATA}")"; RC=$?
+check "config diagnostics：模式环境变量优先于自定义默认值" "$(yn diag_success '当前 mode：**off**')"
+diag_error() { [ "${RC}" -ne 0 ] && has "${OUT}" "❌" && ! has "${OUT}" "当前 mode" && ! has "${OUT}" "Traceback"; }
+for DIAGBAD in "${TMP}/missing.json" "${TMP}/broken.json" "${TMP}/invalid.json" "${ROOT}/config/routing.default.json"; do
+  OUT="$(diagnostic --config "${DIAGBAD}" 2>&1)"; RC=$?
+  check "config diagnostics：无效显式配置拒绝 ${DIAGBAD##*/}" "$(yn diag_error)"
+done
+diag_argument_error() { diag_error && has "${OUT}" "--config"; }
+for DIAGARG in end flag duplicate; do
+  case "${DIAGARG}" in
+    end) OUT="$(diagnostic --config 2>&1)" ;;
+    flag) OUT="$(diagnostic --config --unknown 2>&1)" ;;
+    duplicate) OUT="$(diagnostic --config "${TMP}/audit.json" --config "${TMP}/guard.json" 2>&1)" ;;
+  esac
+  RC=$?
+  check "config diagnostics：参数不完整或重复拒绝 ${DIAGARG}" "$(yn diag_argument_error)"
+done
+check "config diagnostics：不创建缺失的数据目录" "$(yn [ ! -e "${DIAGDATA}" ])"
+check "config diagnostics：既有持久模式未被改写" "$(yn [ "$(cat "${DIAGPERSIST}/mode")" = guard ])"
+
+OUT="$(env -u TIER_GUARD_MODE python3 "${ROOT}/hooks/tier_state.py" show --data "${DIAGDATA}" --config "${TMP}/audit.json")"; RC=$?
+check "config diagnostics：state 同一目录显示 audit" "$(yn diag_success '当前 mode：audit')"
+OUT="$(env -u TIER_GUARD_MODE python3 "${ROOT}/hooks/tier_report.py" --data "${DATA}" --config "${TMP}/audit.json")"; RC=$?
+check "config diagnostics：自定义目录仍保留 v1 判定统计" "$(yn diag_success '| 判定总数 | 5 |')"
+check "config diagnostics：自定义目录仍保留 v1 历史门槛" "$(yn has "${OUT}" 'v1 历史数据门槛')"
+printf '%s' "$(mk "${PAD}" sonnet)" | env -u TIER_GUARD_MODE TIER_GUARD_CONFIG="${TMP}/audit.json" TIER_GUARD_LOG_DIR="${TMP}/config-hook" /bin/bash "${ROOT}/hooks/tier-guard.sh" agent >/dev/null
+local_profile_audit() {
+  python3 - "${TMP}/config-hook/decisions.jsonl" <<'RECEIPT'
+import json, sys
+record = json.loads(open(sys.argv[1]).read().splitlines()[-1])
+raise SystemExit(0 if record["decision"]["profile"] == "audit" else 1)
+RECEIPT
+}
+check "config diagnostics：同一自定义目录的本地 hook 记录 audit" "$(yn local_profile_audit)"
+
 echo ""
 echo "  总计 ${PASS} 通过 / ${FAIL} 失败"
 [ "${PASS}" -gt 0 ] && [ "${FAIL}" -eq 0 ]

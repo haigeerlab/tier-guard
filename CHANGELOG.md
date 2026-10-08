@@ -5,6 +5,13 @@ All notable user-facing changes are documented here. Version numbers follow
 
 ## [Unreleased]
 
+### Added
+
+- Doctor/report accept `--config PATH` for a valid v2 catalog. Explicit invalid
+  catalogs and missing/duplicate arguments fail clearly without default fallback.
+  Diagnostics remain read-only and do not automatically read `TIER_GUARD_CONFIG`;
+  state v1 support and report v1 historical statistics are preserved.
+
 ### Fixed
 
 - Report the current mode from the current configuration for missing, empty and

@@ -20,7 +20,7 @@
 
 ## 2. 已知限制
 
-- **自定义目录不自动同步**：hook 读 `TIER_GUARD_CONFIG`；state 用 `--config`，doctor / report 读插件默认配置。参考[配置优先级](reference.md#3-配置来源与优先级)。
+- **自定义目录不自动同步**：hook 读 `TIER_GUARD_CONFIG`；state、doctor 和 report 均支持显式 `--config`。无参数时诊断仍读插件默认配置，不自动读取 hook 的配置环境变量。参考[配置优先级](reference.md#3-配置来源与优先级)。
 - **skill 执行有宿主和模型差异**：安装 skill 不等于每次自然派活都加载它；显式传入参数属于 pin，hook 不纠正主代理选错的档位。
 - **实际执行与用量有缺口**：Claude 依赖宿主写下的转录；报告会尝试回读。Codex 审计只记录派发参数，不能作为实际模型或总花费证明。
 - **异常日志不是保证**：配置、解释器、目录权限等故障会尽量放行；无法写日志时，可能没有 fallback 记录。

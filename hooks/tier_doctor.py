@@ -5,7 +5,7 @@
 伪造。没有记录时只列出可能的链路断点；只有实际出现 codex-spawn 记录才声明 hook
 曾被调用过。
 
-用法: python3 hooks/tier_doctor.py [--data DIR]
+用法: python3 hooks/tier_doctor.py [--data DIR] [--config PATH]
 """
 import json
 import os
@@ -35,8 +35,15 @@ def load_records(path):
     return records, broken
 
 
-def cmd_doctor(ddir, data_from_host):
-    cfg = tier_state._config()
+def cmd_doctor(ddir, data_from_host, config_path=None):
+    if config_path is not None:
+        try:
+            cfg = tier_state.rd.load_catalog(config_path)
+        except Exception:
+            print("❌ 指定的 v2 路由配置不可用；请检查路径、JSON 与目录契约。")
+            return 1
+    else:
+        cfg = tier_state._config()
     # 与 hook 用同一组允许值：v2 下旧模式（如 dry-run）回退默认，doctor 不能报一个 hook 根本不用的值
     allowed = tier_state.rd.ROUTING_PROFILES if (cfg or {}).get("schema_version") == 2 else None
     mode, source = tier_state.read_mode(ddir, (cfg or {}).get("mode"), allowed)
@@ -72,20 +79,22 @@ def cmd_doctor(ddir, data_from_host):
 
 
 def main(argv):
-    explicit = None
-    if "--data" in argv:
-        i = argv.index("--data")
-        if i + 1 >= len(argv):
-            print("用法: tier_doctor.py [--data DIR]")
-            return 1
-        explicit = argv[i + 1]
-        argv = argv[:i] + argv[i + 2:]
+    options = {"--data": None, "--config": None}
+    for flag in options:
+        if flag in argv:
+            i = argv.index(flag)
+            if i + 1 >= len(argv) or argv[i + 1].startswith("--"):
+                print(f"❌ {flag} 需要完整的路径。")
+                return 1
+            options[flag] = argv[i + 1]
+            argv = argv[:i] + argv[i + 2:]
     if argv:
-        print("用法: tier_doctor.py [--data DIR]")
+        print("❌ 用法: tier_doctor.py [--data DIR] [--config PATH]（参数不得重复）")
         return 1
+    explicit = options["--data"]
     data_from_host = bool(explicit or os.environ.get("TIER_GUARD_LOG_DIR")
                           or os.environ.get("CLAUDE_PLUGIN_DATA"))
-    return cmd_doctor(tier_state.data_dir(explicit), data_from_host)
+    return cmd_doctor(tier_state.data_dir(explicit), data_from_host, options["--config"])
 
 
 if __name__ == "__main__":
