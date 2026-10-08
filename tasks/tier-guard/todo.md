@@ -248,7 +248,16 @@
 
 ## Phase 17 · v0.2.8 正式交付与本机更新（2026-10-08，用户已确认）
 
-- [ ] Task 55 · 版本准备、完整验证与正式 tag 发布
-- [ ] Task 56 · Claude user scope 插件更新与核验
-- [ ] Task 57 · Codex 固定 ref 插件更新与核验
-- [ ] Task 58 · 实际交付记录、提交与远端同步（report）
+- [x] Task 55 · 版本准备、完整验证与正式 tag 发布
+  - 正式补丁后完整 validate 退出 0，官方产物 3 通过、0 警告、0 失败，文档声明 valid/ready；源码和生产目录无改动。
+    发布提交 278e08a 已推送；远端 v0.2.8 附注 tag 和解引用提交读回一致，未覆盖既有 tag。
+- [x] Task 56 · Claude user scope 插件更新与核验
+  - 私有备份后刷新既有 marketplace，CLI 回执 0.2.7 → 0.2.8；user scope、登记提交和安装代码与发布身份一致。
+    插件数据哈希与 Claude settings 未变；同期 Spec Guard 元数据变化已记录，归因未确认，未擅自回滚。
+- [x] Task 57 · Codex 固定 ref 插件更新与核验
+  - 旧来源重新登记为 v0.2.8 并重装，版本 0.2.8、installed/enabled 均 true，安装代码与 tag 一致。
+    Codex config 仅 tier-guard marketplace 区块变化，其他设置、hook 信任记录及原数据哈希未变。
+- [x] Task 58 · 实际交付记录、提交与远端同步（report）
+  - 两边实际安装根共 20 项只读校验通过，每宿主 24 文件字节与发布提交一致；mode 均 off。
+    正式交付结果见 docs/research/2026-10-08-v0.2.8-delivery.md/json；记录随后提交/推送，不移动发布 tag。
+    原有五项逐字保留，无付费派活或信任代签；当前会话需刷新，安装核验不代替真实 child 验收。

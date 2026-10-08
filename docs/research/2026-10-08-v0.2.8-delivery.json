@@ -1,0 +1,41 @@
+{
+  "release_commit": "278e08aacfce9d235b899a61bf90736d552282a1",
+  "tag": "v0.2.8",
+  "tag_object": "b45591bff1b155dadb27a82897a6ad8921c19020",
+  "remote_main_and_tag_verified": true,
+  "installed_cli_checks_passed": 20,
+  "installed_cli_checks_failed": 0,
+  "codex_fixed_ref": "v0.2.8",
+  "codex_enabled": true,
+  "codex_other_config_and_hook_trust_unchanged": true,
+  "claude_settings_unchanged": true,
+  "private_backup_created": true,
+  "hosts": {
+    "claude": {
+      "version": "0.2.8",
+      "scope": "user",
+      "runtime_files_match_release": 24,
+      "data_hashes_preserved": true,
+      "persistent_mode_without_env_override": "off",
+      "restart_required": true
+    },
+    "codex": {
+      "version": "0.2.8",
+      "scope": "existing enabled installation",
+      "runtime_files_match_release": 24,
+      "data_hashes_preserved": true,
+      "persistent_mode_without_env_override": "off",
+      "restart_required": true
+    }
+  },
+  "other_claude_metadata_observed": [
+    {
+      "plugin": "spec-guard@spec-guard-marketplace",
+      "before_version": "0.52.3",
+      "after_version": "0.53.0",
+      "attribution": "unconfirmed; outside this task target",
+      "reverted": false
+    }
+  ],
+  "real_host_dispatches": 0
+}
