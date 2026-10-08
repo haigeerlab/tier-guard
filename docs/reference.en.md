@@ -2,7 +2,7 @@
 
 [中文](reference.md) | [English](reference.en.md) · [Back to README](../README.en.md)
 
-For the default v2 catalog in 0.2.7. Host commands and script invocations are different. Replace shell path placeholders with actual installation paths before running examples.
+For the default v2 catalog in 0.2.8. Host commands and script invocations are different. Replace shell path placeholders with actual installation paths before running examples.
 
 Runtime tool output is currently primarily Chinese. Both references explain the same modes, fields and acceptance evidence; structured log field names are identical.
 

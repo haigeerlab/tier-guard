@@ -4,7 +4,7 @@
 
 Claude Code 与 Codex 的子代理模型路由插件。在主代理决定创建子代理后，按任务所需能力从候选目录中选择成本排序最低的合格模型；Codex 还选择 `reasoning_effort`。主代理的模型不变。
 
-**当前版本：0.2.7 · 出厂默认 `off`。** `tier-routing` skill 引导主代理显式选模型；hook 的审计、提醒、拦截和改写能力取决于模式与宿主。插件不创建任务，也不决定任务拆分和验收标准。
+**已发布版本：0.2.8 · 出厂默认 `off`。** `tier-routing` skill 引导主代理显式选模型；hook 的审计、提醒、拦截和改写能力取决于模式与宿主。插件不创建任务，也不决定任务拆分和验收标准。
 
 ## 1. 项目定位
 
@@ -83,7 +83,7 @@ claude plugin install tier-guard@tier-guard
 在终端安装固定发布版本：
 
 ```bash
-codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.7
+codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.8
 codex plugin add tier-guard@tier-guard
 ```
 
@@ -136,7 +136,7 @@ Claude Code 命令使用插件命名空间，避免与其他插件重名：
 | 参数自动改写 | `applied=true` 仅表示 hook 输出了改写；必须同时核对宿主实际执行回执 |
 | Claude 实际执行 | `SubagentStop` / 转录提供模型和 token；未观测不能解释为 0 用量 |
 
-当前已知限制：空日志或没有 v2 路由记录时，report 可能按历史 v1 配置显示 `dry-run`，即使有效模式是 `off`。**核实模式用 state / doctor**，详见[兼容性与已知限制](docs/compatibility.md)。
+0.2.8 的 report 按现行配置显示当前模式，与空日志或 v1 记录无关，并保留 v1 历史统计；doctor/report 支持显式 `--config`。从 0.2.7 升级后需重启会话，并核对实际加载版本。详见[兼容性与已知限制](docs/compatibility.md)。
 
 tier-guard 不换算金额。按模块统计主会话与子代理总成本，可选用 [spec-guard](https://github.com/haigeerlab/spec-guard-plugin) 的成本报告工具；两个插件运行时不读取彼此数据。
 
@@ -165,7 +165,7 @@ claude plugin uninstall tier-guard@tier-guard --keep-data
 
 ```bash
 codex plugin marketplace remove tier-guard
-codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.7
+codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.8
 codex plugin add tier-guard@tier-guard
 ```
 
@@ -184,7 +184,7 @@ codex plugin remove tier-guard@tier-guard
 | 没有日志 | 先看有效模式；`off` 本来不记录。再检查插件启用、新会话、数据路径、hook 信任及是否真的创建了子代理 |
 | Codex 找不到 `/tier-mode` | 使用脚本入口；Claude 命令文件不会注册为 Codex slash 命令 |
 | 切模式后仍是旧模式 | 检查 `TIER_GUARD_MODE`，它优先于持久文件；确认命令和 hook 使用同一数据目录 |
-| report 显示 `dry-run` | 无 v2 记录时的历史配置限制；用 state / doctor 检查当前模式 |
+| 安装版 0.2.7 的 report 显示 `dry-run` | 旧报告的历史配置限制；用 state / doctor 核实。升级到 0.2.8 并重启会话后再核对 |
 | Codex `opaque_token` / `applied=false` | 已测宿主的正常边界；使用主代理明文预路由，不修改能力闸门来强行自动路由 |
 | guard 首次派活被拒绝 | 预期行为；主代理按目录写明模型后重派。L2 二次失败收回不受每会话一次限制 |
 | 模型不可用或 effort 被拒绝 | 核对账号和宿主支持；候选目录不是账号可用性保证 |

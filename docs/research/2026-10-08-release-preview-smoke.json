@@ -1,0 +1,132 @@
+{
+  "source_commit": "0804161ae9ac9d1ab90977e0ae39dc4a1d79a2c0",
+  "candidate_version": "0.2.8",
+  "export": "git archive HEAD",
+  "spaced_path": true,
+  "proposed_release_files": [
+    ".claude-plugin/plugin.json",
+    ".codex-plugin/plugin.json",
+    "CHANGELOG.md",
+    "README.md",
+    "README.en.md",
+    "docs/reference.md",
+    "docs/reference.en.md",
+    "docs/compatibility.md",
+    "docs/compatibility.en.md"
+  ],
+  "passed": 27,
+  "failed": 0,
+  "checks": [
+    {
+      "check": "check-manifests.py in spaced package path",
+      "passed": true
+    },
+    {
+      "check": "check-plugin-paths.py in spaced package path",
+      "passed": true
+    },
+    {
+      "check": "check-skill-sync.py in spaced package path",
+      "passed": true
+    },
+    {
+      "check": "tier_state default",
+      "passed": true
+    },
+    {
+      "check": "tier_state explicit custom",
+      "passed": true
+    },
+    {
+      "check": "tier_state persistent mode",
+      "passed": true
+    },
+    {
+      "check": "tier_state environment mode",
+      "passed": true
+    },
+    {
+      "check": "tier_doctor default",
+      "passed": true
+    },
+    {
+      "check": "tier_doctor explicit custom",
+      "passed": true
+    },
+    {
+      "check": "tier_doctor persistent mode",
+      "passed": true
+    },
+    {
+      "check": "tier_doctor environment mode",
+      "passed": true
+    },
+    {
+      "check": "tier_report default",
+      "passed": true
+    },
+    {
+      "check": "tier_report explicit custom",
+      "passed": true
+    },
+    {
+      "check": "tier_report persistent mode",
+      "passed": true
+    },
+    {
+      "check": "tier_report environment mode",
+      "passed": true
+    },
+    {
+      "check": "diagnostics do not create missing data",
+      "passed": true
+    },
+    {
+      "check": "diagnostics preserve mode and file set",
+      "passed": true
+    },
+    {
+      "check": "diagnostics preserve custom catalog",
+      "passed": true
+    },
+    {
+      "check": "tier_doctor invalid explicit config",
+      "passed": true
+    },
+    {
+      "check": "tier_report invalid explicit config",
+      "passed": true
+    },
+    {
+      "check": "claude manifest command default off",
+      "passed": true
+    },
+    {
+      "check": "claude manifest command explicit audit",
+      "passed": true
+    },
+    {
+      "check": "claude receipt profile and no apply",
+      "passed": true
+    },
+    {
+      "check": "codex manifest command default off",
+      "passed": true
+    },
+    {
+      "check": "codex manifest command explicit audit",
+      "passed": true
+    },
+    {
+      "check": "codex receipt profile and no apply",
+      "passed": true
+    },
+    {
+      "check": "package source bytes remain unchanged",
+      "passed": true
+    }
+  ],
+  "real_host_dispatches": 0,
+  "host_installation_verified": false,
+  "scope": "Runtime and hook commands exported from source_commit; documentation-only preview edits followed the 27 smoke checks."
+}

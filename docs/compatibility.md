@@ -2,7 +2,7 @@
 
 [中文](compatibility.md) | [English](compatibility.en.md) · [返回 README](../README.md)
 
-核对日期：2026-10-08；源码基线 0.2.7。生产目录是 `off`；Claude 的 `pre_dispatch_apply` 与 `dispatch_nudge` 为 true，Codex 的两项均为 false。表中的实测结果只覆盖所列版本、协议与配置，不是对所有新版本的承诺。
+核对日期：2026-10-08；源码基线 0.2.8；本版诊断变更仅完成离线及本地接口核验，宿主能力沿用下列既有证据。生产目录是 `off`；Claude 的 `pre_dispatch_apply` 与 `dispatch_nudge` 为 true，Codex 的两项均为 false。表中的实测结果只覆盖所列版本、协议与配置，不是对所有新版本的承诺。
 
 ## 1. 宿主能力
 

@@ -4,7 +4,7 @@
 
 A subagent model-routing plugin for Claude Code and Codex. After the main agent decides to create a subagent, it selects the lowest-ranked qualified model from a capability catalog; on Codex, it also selects `reasoning_effort`. The main agent's model stays unchanged.
 
-**Current version: 0.2.7 · Factory default: `off`.** The `tier-routing` skill guides the main agent to choose explicit parameters. Hook auditing, reminders, denial and rewriting depend on the mode and host. The plugin does not create tasks or decide task decomposition and acceptance criteria.
+**Released version: 0.2.8 · Factory default: `off`.** The `tier-routing` skill guides the main agent to choose explicit parameters. Hook auditing, reminders, denial and rewriting depend on the mode and host. The plugin does not create tasks or decide task decomposition and acceptance criteria.
 
 ## 1. Project purpose
 
@@ -83,7 +83,7 @@ Real dispatch consumes host model usage. If the main agent chooses to do the tas
 Install a pinned release in a terminal:
 
 ```bash
-codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.7
+codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.8
 codex plugin add tier-guard@tier-guard
 ```
 
@@ -136,7 +136,7 @@ Host injection or user overrides can change the path. Use state / doctor output 
 | Automatic rewriting | `applied=true` means the hook emitted a rewrite; also verify the host's actual execution receipt |
 | Claude actual execution | `SubagentStop` / transcript supplies model and tokens; unobserved does not mean zero usage |
 
-Known limitation: with empty logs or no v2 routing records, report may use historical v1 configuration and display `dry-run` even when the effective mode is `off`. **Check the mode with state / doctor.** See [compatibility and known limitations](docs/compatibility.en.md).
+In 0.2.8, report reads the current mode from the current configuration regardless of empty or v1-only logs and preserves v1 historical statistics; doctor/report accept explicit `--config`. After upgrading from 0.2.7, restart the session and verify the loaded version. See [compatibility and known limitations](docs/compatibility.en.md).
 
 tier-guard does not convert tokens to currency. For module-level costs covering the main session and subagents, optionally use [spec-guard](https://github.com/haigeerlab/spec-guard-plugin)'s cost-report tools. Neither plugin reads the other's data at runtime.
 
@@ -165,7 +165,7 @@ A pinned tag does not automatically follow new releases. CLI 0.160.0 includes th
 
 ```bash
 codex plugin marketplace remove tier-guard
-codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.7
+codex plugin marketplace add haigeerlab/tier-guard --ref v0.2.8
 codex plugin add tier-guard@tier-guard
 ```
 
@@ -184,7 +184,7 @@ Removing a plugin and removing a marketplace are separate operations. Back up da
 | No logs | Check effective mode first: `off` does not record. Then check enabled state, new session, data path, hook trust and whether a subagent was actually created |
 | Codex cannot find `/tier-mode` | Use the script entry points; Claude command files do not register Codex slash commands |
 | Mode change has no effect | Check `TIER_GUARD_MODE`, which overrides the persistent file; ensure command and hook use the same directory |
-| report shows `dry-run` | Historical-configuration limitation when no v2 records exist; use state / doctor |
+| Installed 0.2.7 report shows `dry-run` | Old report configuration limitation; confirm with state / doctor. Upgrade to 0.2.8, restart the session and verify again |
 | Codex `opaque_token` / `applied=false` | Expected boundary on tested hosts; use main-agent pre-routing rather than changing gates to force automatic routing |
 | guard denies first dispatch | Expected; the main agent should retry with explicit catalog parameters. L2 second-failure reclaim is not limited to once per session |
 | Model unavailable or effort rejected | Check account and host support; the catalog is not an account-availability guarantee |

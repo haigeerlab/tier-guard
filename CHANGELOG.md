@@ -5,6 +5,8 @@ All notable user-facing changes are documented here. Version numbers follow
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-10-08
+
 ### Added
 
 - Doctor/report accept `--config PATH` for a valid v2 catalog. Explicit invalid

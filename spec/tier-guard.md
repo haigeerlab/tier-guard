@@ -574,7 +574,7 @@ doctor/report 支持 `--config PATH` 显式选择合法 v2 目录；不传时仍
 
 ## Documentation impact
 
-以下决定沿用现有指导来源；本次诊断配置入口扩展不改变产品目标、架构或路由接口需求。
+以下决定沿用现有指导来源；本次发布准备不改变产品目标、架构或路由接口需求。
 后续任务如需修改权威文档，应重新声明对应影响并在 Plan 中列出文档交付。
 
 | Concern | Decision | Rationale |
@@ -582,5 +582,5 @@ doctor/report 支持 `--config PATH` 显式选择合法 v2 目录；不传时仍
 | product-direction | follow | 沿用本 Spec 的目标、成功标准与边界，保留未完成宿主验收。 |
 | architecture | follow | 沿用 Plan 中已定架构与依赖方向；诊断配置入口不改变路由判据或宿主闸门。 |
 | developer-entry | follow | 沿用已补齐的 AGENTS.md 及其引用的 CLAUDE.md，不重复维护开发规则。 |
-| consumer-guide | follow | 沿用现有双语用户文档；doctor/report 的显式配置入口同步 compatibility/reference 和 Unreleased 说明，不修改历史实测记录。 |
+| consumer-guide | follow | 沿用现有双语用户文档与 Unreleased 说明；发布准备只新增本批验证和下一版更新预览，不修改历史实测记录。 |
 | integration-contract | follow | 沿用 RouteRequest、Decision 和宿主限制，保留 Codex 上游前置条件。 |

@@ -2,7 +2,7 @@
 
 [中文](compatibility.md) | [English](compatibility.en.md) · [Back to README](../README.en.md)
 
-Checked on 2026-10-08 against source version 0.2.7. Production defaults to `off`. Claude's `pre_dispatch_apply` and `dispatch_nudge` are true; both Codex gates are false. Results apply only to the listed versions, protocols and configurations, not every newer release.
+Checked on 2026-10-08 against source version 0.2.8. This version’s diagnostic changes have offline and local-interface verification only; host capability claims retain the existing evidence below. Production defaults to `off`. Claude's `pre_dispatch_apply` and `dispatch_nudge` are true; both Codex gates are false. Results apply only to the listed versions, protocols and configurations, not every newer release.
 
 ## 1. Host capabilities
 
