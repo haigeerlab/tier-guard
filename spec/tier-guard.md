@@ -558,3 +558,16 @@ adapter 已输出 `updatedInput`，不等于宿主接收或子代理实际执行
   标记为 `transcript_status: missing`，且**不占用 `fallback`** —— 后者只表示守卫自身走了异常路径。
 - 报告把「宿主未写 transcript」的次数与占比单列，且同时统计新字段与历史的 `FileNotFoundError`
   兜底两种口径；在该占比降到不影响代表性之前，任何基于 stop 事件的统计结论都标注为不具代表性。
+
+## Documentation impact
+
+以下决定针对本次文档治理补齐：沿用现有指导来源，不改变产品、架构或接口需求。
+后续任务如需修改权威文档，应重新声明对应影响并在 Plan 中列出文档交付。
+
+| Concern | Decision | Rationale |
+|---|---|---|
+| product-direction | follow | 沿用本 Spec 的目标、成功标准与边界，保留未完成宿主验收。 |
+| architecture | follow | 沿用 Plan 中已定架构与依赖方向，本次不修改运行实现。 |
+| developer-entry | follow | 沿用已补齐的 AGENTS.md 及其引用的 CLAUDE.md，不重复维护开发规则。 |
+| consumer-guide | follow | 沿用双语文档导航与当前使用说明，不修改历史实测结果。 |
+| integration-contract | follow | 沿用 RouteRequest、Decision 和宿主限制，保留 Codex 上游前置条件。 |

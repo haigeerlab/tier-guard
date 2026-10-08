@@ -44,6 +44,9 @@ pure route decision + contract tests
 
 ## Task list
 
+> 本文各 Task 与历史检查点中的验收条目保留计划要求；实际完成状态、验证结果和阻塞原因
+> 统一记录在 `tasks/tier-guard/todo.md`。未同步勾选的计划条目不单独作为未完成判据。
+
 ### Phase 1: Contract and pure routing core
 
 #### Task 1: Define route request, decision, catalog, and pin contracts
@@ -767,3 +770,50 @@ Phase 9: Tasks 28 → 29 → 30 touch the hooks and are done serially; Task 31 c
 付费派活和完整变异测试本批未运行。未提交、推送或发布。
 
 本批文档审查与修订完成；空日志 report 行为修复与原有 Codex 上游前置条件留待独立处理。
+
+## Phase 11：开发约定审计补齐（2026-10-08，用户已确认）
+
+用户已确认应用审计修改预览，并刷新 Spec Guard marketplace。范围是项目开发入口、
+计划与执行状态的说明，以及已配置 `v0.52.3` marketplace 的快照恢复；不修改运行代码。
+
+### Task 37：补齐 Codex 项目入口与状态说明
+
+新增 `AGENTS.md`，引用 `CLAUDE.md` 的共用规则并声明 Codex 本地模块约定；在本计划中
+说明验收条目与 todo 执行记录的关系。保留原有 5 个未完成项及其阻塞、暂缓原因。
+
+**验收：** 开发入口引用的文件存在，声明块唯一且成对；历史任务状态不变；diff 检查通过。
+
+### Task 38：恢复 Spec Guard marketplace 并核验
+
+仅执行 `codex plugin marketplace upgrade spec-guard-marketplace --json`，保留已配置的
+`v0.52.3`。恢复插件查询后，从已启用插件返回的安装路径运行只读阶段与产物检查，
+核对文档基线和历史账本状态。失败或结果未知时如实记录，不把未验证当作通过。
+
+### Task 39：仓库回归与本批交付（report）
+
+运行 `/bin/bash scripts/validate.sh`、`git diff --check`，复核本批文件范围并记录实际结果。
+不进行付费派活、提交、推送、发布，也不安装 pre-push 或启用可选文档基线。
+
+## Phase 12：文档基线与历史快照（2026-10-08，用户已确认）
+
+用户确认按已验证的推荐预览快速推进：启用项目文档基线，声明本模块对现有文档的影响，
+通过官方迁移器保存 legacy 能力图快照。历史未知状态及时间未核实记录均保留，不回填审批或完成事实。
+
+### Task 40：启用文档基线和模块影响
+
+新增 `docs/DOCUMENTATION-BASELINE.md`，引用既有 Spec、Plan、AGENTS.md 和用户文档导航；
+在 Spec 中新增五项 `follow` 决定。本次不改变产品、架构、接口与运行代码。
+
+**验收：** 官方 baseline 和 impact 为 valid，文档声明核验为 ready；ready 只表示声明已收口。
+
+### Task 41：导入历史能力图快照
+
+重新运行 history-migration preview，无冲突后执行已授权的 import。保留 `legacy`、
+`at: imported`、空模块数组和迁移占位 checkpoint；不将其解释为真实历史时间或模块完成证明。
+
+**验收：** 官方历史完整性核验通过，语义审计如实保留 1 条 timestamp-unverified。
+
+### Task 42：本批验收（report）
+
+运行官方产物检查、完整仓库回归和 diff 检查，记录实际结果；保留原有 5 个未完成项。
+不提交、推送、发布、付费派活或修正未证实的历史值。

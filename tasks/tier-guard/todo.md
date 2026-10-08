@@ -162,3 +162,30 @@
 - [x] Checkpoint · 双语文档交付（report）
   - 五对用户文档一致性、46 份 Markdown 的 245 个本地链接 / 锚点、10 个外部链接、临时目录示例、AST 范围核对与完整 validate 均通过。
   - Codex 固定 tag 升级按官方 0.160.0 源码更正；25 份历史正文与基线一致。已知空日志 report 模式问题只作说明。完整证据及未验证项见 plan 本批交付记录。
+
+## Phase 11 · 开发约定审计补齐（2026-10-08，用户已确认）
+
+- [x] Task 37 · 补齐 Codex 项目入口与状态说明
+  - 新增 AGENTS.md，引用共用开发规则并声明 Codex 本地流程；plan 明确 todo 是执行状态记录。
+    入口引用与唯一成对声明块检查通过，原有 todo 正文和任务状态逐字保持不变。
+- [x] Task 38 · 恢复 Spec Guard marketplace 并核验
+  - 仅刷新 spec-guard-marketplace，返回 errors=[]；查询确认 0.52.3 installed=true、enabled=true，固定 ref 保持 v0.52.3。
+    官方 phase 为 BUILDING；verify-artifacts：3 通过、0 警告、0 失败。文档基线 / 影响 / 交付核验均为 absent，
+    历史核验明确报告「未验证：没有 capability history ledger」，不记为通过。
+- [x] Task 39 · 仓库回归与本批交付（report）
+  - 完整 `/bin/bash scripts/validate.sh` 退出 0；`git diff --check` 通过。
+    本批仓库改动仅 AGENTS.md、plan.md、todo.md；未修改运行代码、配置、清单、版本或原有未完成项。
+    仅恢复用户已授权的 marketplace 快照；未提交、推送、发布、付费派活、安装 pre-push 或启用可选文档基线。
+
+## Phase 12 · 文档基线与历史快照（2026-10-08，用户已确认）
+
+- [x] Task 40 · 启用文档基线和模块影响
+  - 基线和模块影响的官方核验均为 valid，文档声明核验为 ready；五项关注点均沿用现有指导来源。
+    target 与 verified 的范围在基线中明确说明，不将声明核验解释为代码或全部宿主验收通过。
+- [x] Task 41 · 导入历史能力图快照
+  - 官方迁移预览无冲突，import --confirm 成功；实际账本与已确认预览一致，快照内容与能力图逐字一致。
+    verify-history 通过；语义审计保留 1 条 timestamp-unverified（at: imported），模块数组为空，历史状态不据此补全。
+- [x] Task 42 · 本批验收（report）
+  - 完整 `/bin/bash scripts/validate.sh` 退出 0，`git diff --check` 通过；官方产物检查 3 通过、0 警告、0 失败。
+    原有 5 个未完成项和运行代码保持不变。本批完成的是文档治理声明及历史快照保存，
+    不代表历史全流程已补证或模块已交付；未提交、推送、发布或进行付费派活。
