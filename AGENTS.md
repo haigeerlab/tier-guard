@@ -10,6 +10,15 @@
 3. `tasks/<module-id>/plan.md` 和 `tasks/<module-id>/todo.md`：实施计划与实际执行状态。
 4. 与本次工作相关的 `docs/research/` 证据。
 
+## 提交与 PR 语言规则
+
+- 从现在起，本项目的提交信息、PR 标题和 PR 描述一律用中文，写清楚改了什么、为什么改，不能是全英文。
+- 文件路径、命令、代码标识符（函数名、变量名、配置项）以及 `fix:`、`feat:`、`docs:`、`chore:` 等前缀保持原样，不翻译。
+- 末尾自动附加的署名行（如 `Co-Authored-By`、`Signed-off-by`）保持原样。
+- 代码和代码注释仍按仓库原有语言，不因本规则改动。
+- 已有的英文提交历史不改。
+- 给不归本团队的外部开源项目提 PR 时，先询问用户，再跟随对方仓库的语言。
+
 <!-- BEGIN:spec-guard-codex-convention -->
 ## Spec Guard 项目约定
 
